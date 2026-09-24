@@ -24,12 +24,8 @@ public interface SecurityConstants {
     /**
      * 网关向下游透传的用户角色权限请求头
      */
-    String HEADER_USER_ROLES = "X-User-Roles";
+    String HEADER_USER_ROLE = "X-User-Role";
 
-    /**
-     * 客户端公网真实 IP 请求头
-     */
-    String HEADER_CLIENT_IP = "X-Client-Ip";
 
     /**
      * 全链路日志追踪 ID 请求头

@@ -20,10 +20,6 @@ public final class RedisKeyConstants {
      */
     public static final String GATEWAY_IP_RATE_LIMIT_PREFIX = "gateway:rate_limit:ip:";
 
-    /**
-     * IP 黑名单 Key: gateway:blacklist:ip
-     */
-    public static final String GATEWAY_IP_BLACKLIST = "gateway:blacklist:ip";
 
     // ==================== 2. 用户与资产服务 (User Service) ====================
     /**

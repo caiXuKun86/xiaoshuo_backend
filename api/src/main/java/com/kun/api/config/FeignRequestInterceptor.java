@@ -53,8 +53,7 @@ public class FeignRequestInterceptor implements RequestInterceptor {
         }
         return headerName.equalsIgnoreCase(SecurityConstants.HEADER_AUTHORIZATION)
                 || headerName.equalsIgnoreCase(SecurityConstants.HEADER_USER_ID)
-                || headerName.equalsIgnoreCase(SecurityConstants.HEADER_USER_ROLES)
-                || headerName.equalsIgnoreCase(SecurityConstants.HEADER_CLIENT_IP)
+                || headerName.equalsIgnoreCase(SecurityConstants.HEADER_USER_ROLE)
                 || headerName.equalsIgnoreCase(SecurityConstants.HEADER_TRACE_ID)
                 || headerName.equalsIgnoreCase(SecurityConstants.HEADER_IDEMPOTENT_KEY)
                 || headerName.equalsIgnoreCase(SecurityConstants.HEADER_CAPTCHA_TICKET);

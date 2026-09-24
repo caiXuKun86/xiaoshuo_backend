@@ -93,4 +93,9 @@
         </dependencies>
     </dependencyManagement>
 
+
+    <build>
+
+    </build>
+
 </project>

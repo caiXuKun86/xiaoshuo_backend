@@ -16,4 +16,16 @@ public enum AssetChangeTypeEnum {
 
     private final Integer code;
     private final String description;
+
+    public static String getDescByCode(Integer code) {
+        if (code == null) {
+            return "";
+        }
+        for (AssetChangeTypeEnum type : values()) {
+            if (type.getCode().equals(code)) {
+                return type.getDescription();
+            }
+        }
+        return "";
+    }
 }

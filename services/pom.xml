@@ -13,8 +13,8 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>user-com.kun.service.book.service</module>
-        <module>book-com.kun.service.book.service</module>
+        <module>book-service</module>
+        <module>user-service</module>
     </modules>
 
     <properties>

@@ -39,10 +39,7 @@ public class UserRegisterReqDTO implements Serializable {
      * 昵称
      */
     private String nickName;
-    /**
-     * 邀请码
-     */
-    private String invitationCode;
+
 
     /**
      * 人机校验通过凭据

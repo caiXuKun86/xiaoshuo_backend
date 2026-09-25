@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE com.kun.service.book.mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-com.kun.service.book.mapper.dtd">
+<com.kun.service.book.mapper namespace="com.kun.service.book.mapper.BookChapterMapper">
+
+    <resultMap id="BaseResultMap" type="com.kun.service.book.domain.BookChapter">
+            <id property="id" column="id" />
+            <result property="bookId" column="book_id" />
+            <result property="chapterIndex" column="chapter_index" />
+            <result property="chapterName" column="chapter_name" />
+            <result property="wordCount" column="word_count" />
+            <result property="isCharge" column="is_charge" />
+            <result property="requiredPoints" column="required_points" />
+            <result property="ossPath" column="oss_path" />
+            <result property="status" column="status" />
+            <result property="publishTime" column="publish_time" />
+            <result property="createTime" column="create_time" />
+            <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,book_id,chapter_index,chapter_name,word_count,is_charge,
+        required_points,oss_path,status,publish_time,create_time,
+        update_time
+    </sql>
+</com.kun.service.book.mapper>

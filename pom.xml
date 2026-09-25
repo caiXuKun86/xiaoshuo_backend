@@ -25,6 +25,7 @@
         <module>common</module>
         <module>api</module>
         <module>services</module>
+        <module>gateway</module>
     </modules>
 
 

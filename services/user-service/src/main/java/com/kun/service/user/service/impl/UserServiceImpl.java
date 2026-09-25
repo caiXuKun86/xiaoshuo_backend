@@ -42,7 +42,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
 
-    private StringRedisTemplate stringRedisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
 
     @Override
     public UserRegisterRespDTO register(UserRegisterReqDTO userRegisterReqDTO) {
@@ -60,7 +60,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (password.length() < 8 || password.length() > 20) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "密码必须8~20位");
         }
-        if (nickName.length() < 4 || nickName.length() > 20) {
+        if (StrUtil.isNotBlank(nickName) && (nickName.length() < 4 || nickName.length() > 20)) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "昵称必须4~20位");
         }
         if (!ObjUtil.equals(password, confirmPassword)) {
@@ -124,7 +124,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String refreshTokenRedisKey = RedisKeyConstants.USER_REFRESH_TOKEN_PREFIX + userId;
         stringRedisTemplate.opsForValue().set(
                 accessTokenRedisKey,
-                refreshToken,
+                accessToken,
                 2,
                 TimeUnit.HOURS
         );
@@ -221,7 +221,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!ObjUtil.equals(newPassword, confirmPassword)) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "密码与确认密码不一致");
         }
-        if (!ObjUtil.equals(newPassword, confirmPassword)) {
+        if (ObjUtil.equals(oldPassword, newPassword)) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "修改失败,密码与原密码一致");
         }
         User user = this.getById(userId);
@@ -235,11 +235,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
 
         boolean update = this.lambdaUpdate()
-                .set(User::getPassword, newPassword)
+                .set(User::getPassword, BCrypt.hashpw(newPassword))
                 .eq(User::getId, userId)
                 .update();
         if (!update) {
-            throw new BusinessException(ResultCode.SYSTEM_ERROR,"修改失败");
+            throw new BusinessException(ResultCode.SYSTEM_ERROR, "修改失败");
         }
 
         // 1. 删掉当前用户的访问令牌
@@ -290,8 +290,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .set(gender != null, User::getGender, gender)
                 .eq(User::getId, userId)
                 .update();
-        if(!update){
-            throw new BusinessException(ResultCode.SYSTEM_ERROR,"修改失败");
+        if (!update) {
+            throw new BusinessException(ResultCode.SYSTEM_ERROR, "修改失败");
         }
 
     }

@@ -4,8 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import org.springframework.beans.BeanUtils;
-import org.springframework.util.StringUtils;
 import com.kun.common.core.context.UserContextHolder;
 import com.kun.common.core.enums.AssetChangeTypeEnum;
 import com.kun.common.core.enums.ResultCode;
@@ -26,11 +24,13 @@ import com.kun.service.user.service.UserAssetLogService;
 import com.kun.service.user.stragety.signReward.SignRewardStrategy;
 import com.kun.service.user.stragety.signReward.SignRewardStrategyFactory;
 import lombok.RequiredArgsConstructor;
-import org.redisson.api.RedissonClient;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.connection.BitFieldSubCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -38,6 +38,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Lenovo
@@ -46,11 +47,12 @@ import java.util.List;
  */
 @RequiredArgsConstructor
 @Service
+@Slf4j
 public class UserAssetLogServiceImpl extends ServiceImpl<UserAssetLogMapper, UserAssetLog> implements UserAssetLogService {
 
     private final StringRedisTemplate stringRedisTemplate;
 
-    private final RedissonClient redissonClient;
+
 
     private final SignRewardStrategyFactory strategyFactory;
     private final UserMapper userMapper;
@@ -63,44 +65,69 @@ public class UserAssetLogServiceImpl extends ServiceImpl<UserAssetLogMapper, Use
         Long userId = UserContextHolder.getUserId();
 
         // 每日连续签到打卡 BitMap Key: user:signin:{userId}:{yyyyMM}
-        String key = RedisKeyConstants.USER_SIGNIN_BITMAP_PREFIX + String.format("%d:%s", userId, date.format(DateTimeFormatter.ofPattern("yyyyMM")));
+        String key = RedisKeyConstants.USER_SIGNIN_BITMAP_PREFIX
+                + String.format("%d:%s", userId, date.format(DateTimeFormatter.ofPattern("yyyyMM")));
+
+        // 1. 原子操作打卡：SETBIT 返回的是该位置被设置前的值 (旧值)
+        Boolean alreadyCheckedIn = stringRedisTemplate.opsForValue().setBit(key, dayOfMonth - 1, true);
+
+        // 如果旧值就是 true (1)，说明今日已签到过，直接拦截，绝对不能回滚 Redis！
+        if (Boolean.TRUE.equals(alreadyCheckedIn)) {
+            throw new BusinessException(ResultCode.ALREADY_CHECKED_IN);
+        }
+
+        // 顺手兜底设置 90 天过期，防止长期无用 key 撑爆内存 (若是新创建的 key)
+        stringRedisTemplate.expire(key, 90, TimeUnit.DAYS);
+
         try {
-            Boolean b = stringRedisTemplate.opsForValue().setBit(key, dayOfMonth - 1, true);
-            if (!b) {
-                throw new BusinessException(ResultCode.ALREADY_CHECKED_IN);
-            }
-            //查询用户数据库行级悲观锁（FOR UPDATE）
+            // 2. 查询用户数据库行级悲观锁 (FOR UPDATE)
             User user = userMapper.selectByUserIdForUpdate(userId);
             if (user == null) {
                 throw new BusinessException(ResultCode.USER_NOT_FOUND);
             }
-            //根据用户是否是VIP采取不同的签到策略
+
+            // 3. 根据是否是 VIP 执行策略计算积分
             SignRewardStrategy strategy = strategyFactory.getStrategy(VipLevelEnum.of(user.getIsVip()));
             int pointsAwarded = strategy.calculatePoints();
+            int newPointBalance = user.getPointBalance() + pointsAwarded;
 
-            Integer newPointBalance = user.getPointBalance() + pointsAwarded;
-            int update = userMapper.update(new LambdaUpdateWrapper<User>().set(User::getPointBalance, newPointBalance).eq(User::getId, userId));
+            // 4. 更新积分余额
+            int update = userMapper.update(null,
+                    new LambdaUpdateWrapper<User>()
+                            .set(User::getPointBalance, newPointBalance)
+                            .eq(User::getId, userId));
             if (update < 1) {
-                throw new BusinessException(ResultCode.SYSTEM_ERROR, "更新积分失败");
+                throw new BusinessException(ResultCode.SYSTEM_ERROR, "更新用户积分余额失败");
             }
+
+            // 5. 记录资产变动明细流水
             UserAssetLog userAssetLog = new UserAssetLog();
             userAssetLog.setUserId(userId);
             userAssetLog.setChangeType(AssetChangeTypeEnum.CHECKIN_REWARD.getCode());
             userAssetLog.setBalanceChange(pointsAwarded);
             userAssetLog.setBalanceBefore(user.getPointBalance());
             userAssetLog.setBalanceAfter(newPointBalance);
-            userAssetLog.setTitle("每日签到");
+            userAssetLog.setTitle("每日签到奖励");
 
             boolean save = this.save(userAssetLog);
             if (!save) {
-                throw new BusinessException(ResultCode.SYSTEM_ERROR, "添加记录失败");
+                throw new BusinessException(ResultCode.SYSTEM_ERROR, "记录签到流水失败");
             }
-            return new UserCheckinRespDTO(pointsAwarded, newPointBalance);
-        } catch (Exception e) {
-            stringRedisTemplate.opsForValue().setBit(key, dayOfMonth - 1, false);
-            throw new BusinessException(ResultCode.SYSTEM_ERROR);
-        }
 
+            return new UserCheckinRespDTO(pointsAwarded, newPointBalance);
+
+        } catch (Exception e) {
+            // 6. 异常补偿机制：只有在后续业务逻辑抛异常时，才将今天的签到位补偿重置为 false
+            stringRedisTemplate.opsForValue().setBit(key, dayOfMonth - 1, false);
+            log.error("用户签到事务执行失败，已补偿回滚 Redis 签到状态, userId: {}, key: {}, 原因: {}", userId, key, e.getMessage(), e);
+
+            // 7. 必须重新往外抛出异常！
+            // 业务异常直接往外抛，系统未知异常包装后往外抛，确保 @Transactional 回滚生效
+            if (e instanceof BusinessException) {
+                throw (BusinessException) e;
+            }
+            throw new BusinessException(ResultCode.SYSTEM_ERROR, "签到失败，请稍后重试");
+        }
     }
 
     @Override

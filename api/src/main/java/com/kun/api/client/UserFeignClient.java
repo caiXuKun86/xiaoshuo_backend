@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 /**
  * 用户与资产服务内部 Feign 声明接口
  */
-@FeignClient(value = "service-user", contextId = "userFeignClient", configuration = FeignConfig.class)
+@FeignClient(value = "com.kun.service.book.service-user", contextId = "userFeignClient", configuration = FeignConfig.class)
 public interface UserFeignClient {
 
     /**

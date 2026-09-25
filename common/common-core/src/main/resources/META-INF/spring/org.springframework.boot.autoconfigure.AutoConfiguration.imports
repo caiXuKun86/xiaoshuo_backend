@@ -1,2 +1,5 @@
 com.kun.common.core.config.JacksonConfig
 com.kun.common.core.exception.GlobalExceptionHandler
+com.kun.common.core.config.UserContextAutoConfiguration
+com.kun.common.core.advice.ResultResponseAdvice
+

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE com.kun.service.book.mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-com.kun.service.book.mapper.dtd">
+<com.kun.service.book.mapper namespace="com.kun.service.book.mapper.UserChapterUnlockMapper">
+
+    <resultMap id="BaseResultMap" type="com.kun.service.book.domain.UserChapterUnlock">
+            <id property="id" column="id" />
+            <result property="userId" column="user_id" />
+            <result property="bookId" column="book_id" />
+            <result property="chapterId" column="chapter_id" />
+            <result property="costPoints" column="cost_points" />
+            <result property="createTime" column="create_time" />
+            <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,user_id,book_id,chapter_id,cost_points,create_time,
+        update_time
+    </sql>
+</com.kun.service.book.mapper>

@@ -1,9 +1,13 @@
 server:
-  port: 8080
+  port: 8081
 
 spring:
   application:
     name: user-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
 
   # ========================================================
   # 1. MySQL 数据源配置 (内置 HikariCP 连接池)
@@ -43,7 +47,7 @@ spring:
 # ========================================================
 mybatis-plus:
   # XML 映射文件存放位置
-  mapper-locations: classpath*:/mapper/**/*.xml
+  mapper-locations: classpath*:/com.kun.service.book.mapper/**/*.xml
   # 实体类包路径 (支持通配符)
   type-aliases-package: com.kun.service.user.entity
   configuration:
@@ -58,3 +62,19 @@ mybatis-plus:
       id-type: assign_id
       # 表名是否使用下划线命名规范
       table-underline: true
+
+
+
+# Springdoc / Knife4j 配置
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn

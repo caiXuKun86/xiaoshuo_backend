@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE com.kun.service.book.mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-com.kun.service.book.mapper.dtd">
+<com.kun.service.book.mapper namespace="com.kun.service.book.mapper.BookInfoMapper">
+
+    <resultMap id="BaseResultMap" type="com.kun.service.book.domain.BookInfo">
+            <id property="id" column="id" />
+            <result property="bookName" column="book_name" />
+            <result property="authorId" column="author_id" />
+            <result property="authorName" column="author_name" />
+            <result property="categoryId" column="category_id" />
+            <result property="categoryName" column="category_name" />
+            <result property="coverUrl" column="cover_url" />
+            <result property="description" column="description" />
+            <result property="tags" column="tags" />
+            <result property="wordCount" column="word_count" />
+            <result property="bookStatus" column="book_status" />
+            <result property="latestChapterId" column="latest_chapter_id" />
+            <result property="latestChapterName" column="latest_chapter_name" />
+            <result property="latestChapterTime" column="latest_chapter_time" />
+            <result property="viewCount" column="view_count" />
+            <result property="collectCount" column="collect_count" />
+            <result property="score" column="score" />
+            <result property="status" column="status" />
+            <result property="createTime" column="create_time" />
+            <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,book_name,author_id,author_name,category_id,category_name,
+        cover_url,description,tags,word_count,book_status,
+        latest_chapter_id,latest_chapter_name,latest_chapter_time,view_count,collect_count,
+        score,status,create_time,update_time
+    </sql>
+</com.kun.service.book.mapper>

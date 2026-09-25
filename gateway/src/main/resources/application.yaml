@@ -1,0 +1,44 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+    gateway:
+      discovery:
+        locator:
+          # 关闭通过服务名的默认直连，由下方 routes 进行精确路由控制
+          enabled: false
+      routes:
+        # 用户与资产服务路由
+        - id: user-service-route
+          uri: lb://user-service
+          predicates:
+            - Path=/api/v1/user/**
+          filters:
+            # 剪切掉前 2 级路径前缀 (/api/v1)，下游服务实际接收 /user/**
+            - StripPrefix=2
+
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      password: 1234
+      database: 0
+      timeout: 5000ms
+
+# 网关安全白名单配置 (符合接口规范契约要求)
+gateway:
+  security:
+    whitelist:
+      - /api/v1/common/**
+      - /api/v1/user/login
+      - /api/v1/user/register
+      - /api/v1/user/refresh-token
+      - /api/v1/book/public/**
+      - /api/v1/search/**
+      - /api/v1/pay/notify/**

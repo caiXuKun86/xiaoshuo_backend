@@ -4,14 +4,19 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.kun.common.database.entity.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+import java.io.Serial;
 
 /**
  * 用户资产与积分变动流水表
  * @TableName user_asset_log
  */
+@EqualsAndHashCode(callSuper = true)
 @TableName(value ="user_asset_log")
 @Data
 public class UserAssetLog extends BaseEntity {
+    @Serial
     private static final long serialVersionUID = 1L;
 
     /**

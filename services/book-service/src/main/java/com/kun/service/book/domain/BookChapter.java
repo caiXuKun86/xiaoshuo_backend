@@ -1,19 +1,25 @@
 package com.kun.service.book.domain;
 
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import java.io.Serializable;
-import java.util.Date;
+import com.kun.common.database.entity.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+import java.io.Serial;
+import java.time.LocalDateTime;
 
 /**
  * 章节目录表
  * @TableName book_chapter
  */
+@EqualsAndHashCode(callSuper = true)
 @TableName(value ="book_chapter")
 @Data
-public class BookChapter implements Serializable {
+public class BookChapter extends BaseEntity {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
     /**
      * 章节主键 ID (雪花算法)
      */
@@ -39,6 +45,10 @@ public class BookChapter implements Serializable {
      * 本章字数 (如 3200)
      */
     private Integer wordCount;
+    /**
+     * 段落数量
+     */
+    private Integer paragraphCount;
 
     /**
      * 是否付费章节 (0:免费 1:收费)
@@ -63,18 +73,7 @@ public class BookChapter implements Serializable {
     /**
      * 发布生效时间 (支持定时发布)
      */
-    private Date publishTime;
+    private LocalDateTime publishTime;
 
-    /**
-     * 创建时间
-     */
-    private Date createTime;
 
-    /**
-     * 更新时间
-     */
-    private Date updateTime;
-
-    @TableField(exist = false)
-    private static final long serialVersionUID = 1L;
 }

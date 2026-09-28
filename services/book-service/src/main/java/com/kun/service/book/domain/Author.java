@@ -1,19 +1,25 @@
 package com.kun.service.book.domain;
 
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import java.io.Serializable;
-import java.util.Date;
+import com.kun.common.database.entity.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+import java.io.Serial;
 
 /**
  * 作家/笔名表
  * @TableName author
  */
+@EqualsAndHashCode(callSuper = true)
 @TableName(value ="author")
 @Data
-public class Author implements Serializable {
+public class Author extends BaseEntity {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
     /**
      * 作家主键 ID (雪花算法)
      */
@@ -45,16 +51,7 @@ public class Author implements Serializable {
      */
     private Integer status;
 
-    /**
-     * 签约/入驻时间
-     */
-    private Date createTime;
 
-    /**
-     * 更新时间
-     */
-    private Date updateTime;
 
-    @TableField(exist = false)
-    private static final long serialVersionUID = 1L;
+
 }

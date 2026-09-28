@@ -1,19 +1,24 @@
 package com.kun.service.book.domain;
 
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import java.io.Serializable;
-import java.util.Date;
+import com.kun.common.database.entity.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+import java.io.Serial;
 
 /**
  * 用户章节解锁记录表
  * @TableName user_chapter_unlock
  */
+@EqualsAndHashCode(callSuper = true)
 @TableName(value ="user_chapter_unlock")
 @Data
-public class UserChapterUnlock implements Serializable {
+public class UserChapterUnlock extends BaseEntity {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
     /**
      * 主键 ID (雪花算法)
      */
@@ -40,16 +45,5 @@ public class UserChapterUnlock implements Serializable {
      */
     private Integer costPoints;
 
-    /**
-     * 兑换时间
-     */
-    private Date createTime;
 
-    /**
-     * 更新时间
-     */
-    private Date updateTime;
-
-    @TableField(exist = false)
-    private static final long serialVersionUID = 1L;
 }

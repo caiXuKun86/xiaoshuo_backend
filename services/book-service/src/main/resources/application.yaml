@@ -78,3 +78,12 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
+
+
+
+
+  oss:
+    region: cn-beijing
+    endpoint: oss-cn-beijing.aliyuncs.com
+    bucketName: xiao-shuo-han
+    domain: https://xiao-shuo-han.oss-cn-beijing.aliyuncs.com # 自定义域名或访问域名

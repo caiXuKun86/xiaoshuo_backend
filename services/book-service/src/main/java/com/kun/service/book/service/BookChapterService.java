@@ -1,7 +1,10 @@
 package com.kun.service.book.service;
 
-import com.kun.service.book.domain.BookChapter;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.kun.service.book.domain.BookChapter;
+import com.kun.service.book.dto.req.ChapterExchangeReqDTO;
+import com.kun.service.book.dto.resp.BookChapterQueryRespDTO;
+import com.kun.service.book.dto.resp.ChapterExchangeRespDTO;
 
 /**
 * @author Lenovo
@@ -10,4 +13,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 */
 public interface BookChapterService extends IService<BookChapter> {
 
+    BookChapterQueryRespDTO queryBookChapter(Long bookId, Long chapterId);
+
+    ChapterExchangeRespDTO exchangeChapter(ChapterExchangeReqDTO chapterExchangeReqDTO);
 }

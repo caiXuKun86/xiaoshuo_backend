@@ -1,25 +1,31 @@
 package com.kun.service.book.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import java.io.Serializable;
-import java.util.Date;
+import com.kun.common.database.entity.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+import java.io.Serial;
 
 /**
  * 图书分类表
  * @TableName category
  */
+@EqualsAndHashCode(callSuper = true)
 @TableName(value ="category")
 @Data
-public class Category implements Serializable {
+public class Category extends BaseEntity {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
     /**
      * 分类主键 ID
      */
     @TableId(type = IdType.AUTO)
-    private Integer id;
+    private Long id;
 
     /**
      * 分类名称 (如"东方玄幻")
@@ -29,7 +35,7 @@ public class Category implements Serializable {
     /**
      * 父级分类 ID (0 为顶级频道，如男频、女频)
      */
-    private Integer parentId;
+    private Long parentId;
 
     /**
      * 展示排序权重 (数值越小越靠前)
@@ -41,16 +47,5 @@ public class Category implements Serializable {
      */
     private Integer status;
 
-    /**
-     * 创建时间
-     */
-    private Date createTime;
 
-    /**
-     * 更新时间
-     */
-    private Date updateTime;
-
-    @TableField(exist = false)
-    private static final long serialVersionUID = 1L;
 }

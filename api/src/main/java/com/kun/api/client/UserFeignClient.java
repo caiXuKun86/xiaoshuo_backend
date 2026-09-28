@@ -5,12 +5,15 @@ import com.kun.api.dto.user.UserDTO;
 import com.kun.api.dto.user.UserPointsUpdateDTO;
 import com.kun.common.core.result.Result;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 /**
  * 用户与资产服务内部 Feign 声明接口
  */
-@FeignClient(value = "com.kun.service.book.service-user", contextId = "userFeignClient", configuration = FeignConfig.class)
+@FeignClient(value = "user-service", contextId = "userFeignClient", configuration = FeignConfig.class)
 public interface UserFeignClient {
 
     /**
@@ -25,10 +28,5 @@ public interface UserFeignClient {
     @PostMapping("/inner/user/points/update")
     Result<Boolean> updatePoints(@RequestBody UserPointsUpdateDTO updateDTO);
 
-    /**
-     * 校验指定用户是否已经兑换解锁该章节
-     */
-    @GetMapping("/inner/user/chapter/check-unlocked")
-    Result<Boolean> checkChapterUnlocked(@RequestParam("userId") Long userId,
-                                         @RequestParam("chapterId") Long chapterId);
+
 }

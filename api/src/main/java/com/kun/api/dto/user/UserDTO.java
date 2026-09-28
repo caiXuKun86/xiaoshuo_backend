@@ -34,7 +34,7 @@ public class UserDTO implements Serializable {
     private String avatar;
 
     @Schema(description = "账户可用积分余额")
-    private Long pointBalance;
+    private Integer pointBalance;
 
     @Schema(description = "VIP 标识 (0:非VIP 1:VIP)")
     private Integer isVip;

@@ -6,6 +6,7 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.BCrypt;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.kun.api.dto.user.UserPointsUpdateDTO;
 import com.kun.common.core.context.LoginUser;
 import com.kun.common.core.context.UserContextHolder;
 import com.kun.common.core.enums.ResultCode;
@@ -14,6 +15,7 @@ import com.kun.common.core.exception.BusinessException;
 import com.kun.common.core.utils.JwtUtils;
 import com.kun.common.redis.constant.RedisKeyConstants;
 import com.kun.service.user.domain.User;
+import com.kun.service.user.domain.UserAssetLog;
 import com.kun.service.user.dto.req.ChangePasswordReqDTO;
 import com.kun.service.user.dto.req.UserLoginReqDTO;
 import com.kun.service.user.dto.req.UserProfileUpdateReqDTO;
@@ -22,12 +24,14 @@ import com.kun.service.user.dto.resp.RefreshTokenRespDTO;
 import com.kun.service.user.dto.resp.UserLoginRespDTO;
 import com.kun.service.user.dto.resp.UserProfileQueryRespDTO;
 import com.kun.service.user.dto.resp.UserRegisterRespDTO;
+import com.kun.service.user.mapper.UserAssetLogMapper;
 import com.kun.service.user.mapper.UserMapper;
 import com.kun.service.user.service.UserService;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -43,6 +47,7 @@ import java.util.concurrent.TimeUnit;
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
 
     private final StringRedisTemplate stringRedisTemplate;
+    private final UserAssetLogMapper userAssetLogMapper;
 
     @Override
     public UserRegisterRespDTO register(UserRegisterReqDTO userRegisterReqDTO) {
@@ -295,6 +300,30 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
 
     }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updatePoints(UserPointsUpdateDTO updateDTO) {
+        Long userId = UserContextHolder.getUserId();
+        boolean update = this.lambdaUpdate()
+                .setSql("point_balance = point_balance -" + updateDTO.getBalanceChange())
+                .eq(User::getId, userId)
+                .update();
+        if (!update) {
+            throw new BusinessException(ResultCode.SYSTEM_ERROR);
+        }
+
+        UserAssetLog userAssetLog = new UserAssetLog();
+        BeanUtil.copyProperties(updateDTO, userAssetLog);
+
+        int insert = userAssetLogMapper.insert(userAssetLog);
+        if (insert < 1) {
+            throw new BusinessException(ResultCode.SYSTEM_ERROR);
+        }
+
+    }
+
+
 }
 
 

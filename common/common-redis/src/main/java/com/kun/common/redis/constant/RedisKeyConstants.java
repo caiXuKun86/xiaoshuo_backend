@@ -37,10 +37,7 @@ public final class RedisKeyConstants {
      */
     public static final String USER_SIGNIN_BITMAP_PREFIX = "user:signin:";
 
-    /**
-     * 用户资产信息缓存 Key: user:asset:{userId}
-     */
-    public static final String USER_ASSET_CACHE_PREFIX = "user:asset:";
+
 
     // ==================== 3. 图书与内容服务 (Book Service) ====================
     /**
@@ -57,6 +54,11 @@ public final class RedisKeyConstants {
      * 图书章节目录树缓存 Key: book:catalog:{bookId}
      */
     public static final String BOOK_CATALOG_PREFIX = "book:catalog:";
+
+    /**
+     * 积分兑换章节分布式锁 lock:chapter:exchange:{userId}:{chapterId}
+     */
+    public static final String LOCK_EXCHANGE_CHAPTER="lock:chapter:exchange:%s:%s";
 
     // ==================== 4. 进度与书架服务 (Shelf Service) ====================
     /**

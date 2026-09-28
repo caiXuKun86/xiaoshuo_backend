@@ -12,6 +12,8 @@ public enum ResultCode implements IResultCode {
 
     // ==================== 200 全局成功 ====================
     SUCCESS(200, "操作成功"),
+    //服务不可用
+    UNAVAILABLE_SERVICE(503,"服务不可用"),
 
 
     // ==================== 10000 ~ 10099 基础与网关层 ====================
@@ -29,6 +31,7 @@ public enum ResultCode implements IResultCode {
     FORBIDDEN_ACCESS(10105, "当前账号权限不足"),
     USER_BANNED(10106, "账号存在违规行为已被封禁"),
 
+
     // ==================== 20000 ~ 29999 用户与资产服务 (User) ====================
     USER_ALREADY_EXISTS(20001, "该用户名已被注册"),
     USER_NOT_FOUND(20002, "用户不存在"),
@@ -43,6 +46,8 @@ public enum ResultCode implements IResultCode {
     CHAPTER_NOT_FOUND(30003, "章节不存在或已被作者删除"),
     CHAPTER_NEED_PURCHASE(30004, "本章节为付费章节，需要解锁后阅读"),
     OSS_CONTENT_FETCH_FAIL(30005, "章节正文加载失败，请重试"),
+    PAY_INSUFFICIENT_POINTS(30006, "账户可用积分不足，无法完成兑换"),
+    CHAPTER_ALREADY_UNLOCKED(30007, "该章节已解锁，无需重复购买"),
 
     // ==================== 40000 ~ 49999 进度与书架服务 (Shelf) ====================
     SHELF_ALREADY_EXISTS(40001, "该书已存在于您的书架中"),
@@ -57,8 +62,7 @@ public enum ResultCode implements IResultCode {
     ALREADY_RATED(50005, "您已经为本书评过分了"),
 
     // ==================== 60000 ~ 69999 交易支付服务 (Pay) ====================
-    PAY_INSUFFICIENT_POINTS(60001, "账户可用积分不足，无法完成兑换"),
-    CHAPTER_ALREADY_UNLOCKED(60002, "该章节已解锁，无需重复购买"),
+
     PAY_SKU_NOT_FOUND(60003, "充值套餐不存在或已下架"),
     PAY_ORDER_EXPIRED(60004, "订单支付已超时关闭，请重新下单"),
     PAY_SIGN_VERIFY_FAIL(60005, "支付回调签名校验失败"),

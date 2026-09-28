@@ -9,7 +9,7 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>user-com.kun.service.book.service</artifactId>
+    <artifactId>user-service</artifactId>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -29,6 +29,10 @@
         <dependency>
             <groupId>com.kun</groupId>
             <artifactId>common-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.kun</groupId>
+            <artifactId>api</artifactId>
         </dependency>
 
         <dependency>

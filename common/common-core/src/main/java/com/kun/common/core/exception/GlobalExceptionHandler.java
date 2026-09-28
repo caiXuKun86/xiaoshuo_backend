@@ -39,6 +39,7 @@ public class GlobalExceptionHandler {
         return Result.fail(e.getCode(), e.getMessage());
     }
 
+
     /**
      * 捕获 POST 请求 @RequestBody 参数校验异常 (MethodArgumentNotValidException)
      */

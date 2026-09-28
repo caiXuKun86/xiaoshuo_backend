@@ -4,17 +4,21 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.kun.common.database.entity.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
+import java.io.Serial;
 import java.time.LocalDateTime;
 
 /**
  * 用户基础信息表
  * @TableName user
  */
+@EqualsAndHashCode(callSuper = true)
 @TableName(value ="user")
 @Data
 public class User extends BaseEntity   {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     /**

@@ -12,7 +12,8 @@ public enum AssetChangeTypeEnum {
     CHECKIN_REWARD(1, "每日签到赠送"),
     RECHARGE(2, "充值到账"),
     CHAPTER_EXCHANGE(3, "章节兑换消耗"),
-    ADMIN_ADJUST(4, "管理员调整");
+    ADMIN_ADJUST(4, "管理员调整"),
+    REFUND(5,"执行失败,退还积分");
 
     private final Integer code;
     private final String description;

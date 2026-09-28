@@ -2,6 +2,7 @@ package com.kun.service.book.service;
 
 import com.kun.service.book.domain.Author;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.kun.service.book.dto.resp.AuthorDetailQueryRespDTO;
 
 /**
 * @author Lenovo
@@ -10,4 +11,5 @@ import com.baomidou.mybatisplus.extension.service.IService;
 */
 public interface AuthorService extends IService<Author> {
 
+    AuthorDetailQueryRespDTO queryBookDetailById(Long id);
 }

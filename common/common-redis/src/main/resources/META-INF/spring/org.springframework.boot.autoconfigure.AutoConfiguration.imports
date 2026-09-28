@@ -1,3 +1,2 @@
 com.kun.common.redis.config.RedisConfig
-com.kun.common.redis.util.RedisUtils
-com.kun.common.redis.util.RedissonLockUtils
+com.kun.common.redis.util.CacheUtil

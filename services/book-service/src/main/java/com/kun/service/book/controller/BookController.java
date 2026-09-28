@@ -32,7 +32,6 @@ public class BookController {
         return Result.success(bookDetailQueryRespDTO);
     }
 
-    //TODO  缓存
     @GetMapping("/detail/{bookId}/catalog")
     public Result<BookCatalogQueryRespDTO> queryBookCatalog(@PathVariable Long bookId, @RequestParam(required = false, defaultValue = "ASC") String sortOrder) {
         BookCatalogQueryRespDTO bookCatalogQueryRespDTO = bookInfoService.queryBookCatalogById(bookId, sortOrder);

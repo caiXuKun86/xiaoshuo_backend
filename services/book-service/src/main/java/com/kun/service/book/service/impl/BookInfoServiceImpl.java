@@ -11,6 +11,8 @@ import com.kun.common.core.enums.ChapterStatusEnum;
 import com.kun.common.core.enums.ResultCode;
 import com.kun.common.core.exception.BusinessException;
 import com.kun.common.database.page.PageResult;
+import com.kun.common.redis.constant.RedisKeyConstants;
+import com.kun.common.redis.util.CacheUtil;
 import com.kun.service.book.domain.BookChapter;
 import com.kun.service.book.domain.BookInfo;
 import com.kun.service.book.domain.UserChapterUnlock;
@@ -31,6 +33,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -46,6 +49,8 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
     private final BookChapterMapper bookChapterMapper;
 
     private final UserChapterUnlockMapper userChapterUnlockMapper;
+
+    private final CacheUtil cacheUtil;
 
 
     @Override
@@ -128,10 +133,17 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
         if (bookInfo == null || !(Objects.equals(bookInfo.getStatus(), BookOpStatusEnum.ON_SHELF.getCode()))) {
             throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
         }
-        List<BookChapter> bookChapters = bookChapterMapper.selectList(new LambdaQueryWrapper<BookChapter>()
-                .eq(BookChapter::getBookId, bookInfo.getId())
-                .eq(BookChapter::getStatus, ChapterStatusEnum.PUBLISHED)
+        List<BookChapter> bookChapters = cacheUtil.queryListWithMutex(
+                String.format(RedisKeyConstants.CACHE_BOOK_CATALOG, bookId),
+                BookChapter.class,
+                () -> bookChapterMapper.selectList(new LambdaQueryWrapper<BookChapter>()
+                        .eq(BookChapter::getBookId, bookInfo.getId())
+                        .eq(BookChapter::getStatus, ChapterStatusEnum.PUBLISHED)
+                ),
+                2L,
+                TimeUnit.HOURS
         );
+
         List<UserChapterUnlock> userChapterUnlocks = userChapterUnlockMapper.selectList(new LambdaQueryWrapper<UserChapterUnlock>()
                 .eq(UserChapterUnlock::getUserId, userId)
                 .eq(UserChapterUnlock::getBookId, bookId)

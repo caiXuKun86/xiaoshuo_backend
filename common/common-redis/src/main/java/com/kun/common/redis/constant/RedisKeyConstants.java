@@ -41,6 +41,14 @@ public final class RedisKeyConstants {
 
     // ==================== 3. 图书与内容服务 (Book Service) ====================
     /**
+     * 图书分类缓存 Key: cache:book:category
+     */
+    public static final String CACHE_BOOK_CATEGORY = "cache:book:category";
+    /**
+     * 图书章节目录树缓存 Key: cache:book:catalog:{bookId}
+     */
+    public static final String CACHE_BOOK_CATALOG = "cache:book:catalog:%s";
+    /**
      * 图书基础元数据缓存 Key: book:info:{bookId}
      */
     public static final String BOOK_INFO_PREFIX = "book:info:";
@@ -50,10 +58,7 @@ public final class RedisKeyConstants {
      */
     public static final String BOOK_CHAPTER_CONTENT_PREFIX = "book:chapter:content:";
 
-    /**
-     * 图书章节目录树缓存 Key: book:catalog:{bookId}
-     */
-    public static final String BOOK_CATALOG_PREFIX = "book:catalog:";
+
 
     /**
      * 积分兑换章节分布式锁 lock:chapter:exchange:{userId}:{chapterId}

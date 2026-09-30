@@ -306,7 +306,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public void updatePoints(UserPointsUpdateDTO updateDTO) {
         Long userId = UserContextHolder.getUserId();
         boolean update = this.lambdaUpdate()
-                .setSql("point_balance = point_balance -" + updateDTO.getBalanceChange())
+                .setSql("point_balance = point_balance +" + updateDTO.getBalanceChange())
                 .eq(User::getId, userId)
                 .update();
         if (!update) {

@@ -22,6 +22,14 @@ spring:
           filters:
             # 剪切掉前 2 级路径前缀 (/api/v1)，下游服务实际接收 /user/**
             - StripPrefix=2
+            # 用户与资产服务路由
+        - id: book-service-route
+          uri: lb://book-service
+          predicates:
+            - Path=/api/v1/book/**
+          filters:
+            # 剪切掉前 2 级路径前缀 (/api/v1)，下游服务实际接收 /user/**
+            - StripPrefix=2
 
   data:
     redis:
@@ -39,6 +47,10 @@ gateway:
       - /api/v1/user/login
       - /api/v1/user/register
       - /api/v1/user/refresh-token
-      - /api/v1/book/public/**
-      - /api/v1/search/**
+      - /api/v1/book/categories
+      - /api/v1/book/filter
+      - /api/v1/book/detail/**
+      - /api/v1/book/author/**
+      - /api/v1/book/**/catalog
+      - /api/v1/book/chapter/**/content
       - /api/v1/pay/notify/**

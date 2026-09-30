@@ -14,6 +14,7 @@ public enum ResultCode implements IResultCode {
     SUCCESS(200, "操作成功"),
     //服务不可用
     UNAVAILABLE_SERVICE(503,"服务不可用"),
+    OPERATION_FAILED(500,"操作失败"),
 
 
     // ==================== 10000 ~ 10099 基础与网关层 ====================
@@ -48,6 +49,14 @@ public enum ResultCode implements IResultCode {
     OSS_CONTENT_FETCH_FAIL(30005, "章节正文加载失败，请重试"),
     PAY_INSUFFICIENT_POINTS(30006, "账户可用积分不足，无法完成兑换"),
     CHAPTER_ALREADY_UNLOCKED(30007, "该章节已解锁，无需重复购买"),
+    PAN_NAME_ALREADY_EXISTED(30008, "笔名已存在"),
+    WRITER_ALREADY_REGISTER(30009, "您已经是认证作家"),
+    NOT_AN_AUTHOR(30010, "非作家"),
+    AUTHOR_BANNED(30011, "您已被封禁"),
+    ALREADY_HAVE_BOOK(30012, "书名重复"),
+    CATEGORY_NOT_EXISTED(30013, "分类不存在"),
+    AUTHOR_NOT_PERMITTED(30014, "无权修改或操作他人作品与章节"),
+    CONTENT_IS_BLANK(30015, "章节正文内容不能为空"),
 
     // ==================== 40000 ~ 49999 进度与书架服务 (Shelf) ====================
     SHELF_ALREADY_EXISTS(40001, "该书已存在于您的书架中"),

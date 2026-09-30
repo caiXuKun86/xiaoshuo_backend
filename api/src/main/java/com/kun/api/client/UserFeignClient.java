@@ -1,6 +1,7 @@
 package com.kun.api.client;
 
 import com.kun.api.config.FeignConfig;
+import com.kun.api.dto.user.RegisterWriterDTO;
 import com.kun.api.dto.user.UserDTO;
 import com.kun.api.dto.user.UserPointsUpdateDTO;
 import com.kun.common.core.result.Result;
@@ -28,5 +29,9 @@ public interface UserFeignClient {
     @PostMapping("/inner/user/points/update")
     Result<Boolean> updatePoints(@RequestBody UserPointsUpdateDTO updateDTO);
 
-
+    /**
+     * 更新作家
+     */
+    @PostMapping("/inner/user/writer/register")
+    Result<Boolean> registerWriter(@RequestBody RegisterWriterDTO registerWriterDTO);
 }

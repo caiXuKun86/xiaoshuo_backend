@@ -12,7 +12,7 @@ public class BookPageReqDTO extends com.kun.common.database.page.PageRequest {
     /**
      * 频道筛选
      */
-    private Integer channelId;
+    private Integer channelId=0;
 
     /**
      * 二级分类 ID

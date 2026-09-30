@@ -30,6 +30,8 @@ public class UserPointsUpdateDTO implements Serializable {
     private String orderNo;
 
     private String title;
+    private Integer balanceBefore;
+    private Integer balanceAfter;
 
 
 }

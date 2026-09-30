@@ -17,6 +17,7 @@ public class OssTemplate {
 
     private final OSS ossClient;
     private final OssProperties properties;
+    public static final String UPLOAD_CHAPTER = "books/%d/chapters/%04d.txt";
 
 
     /**
@@ -43,6 +44,7 @@ public class OssTemplate {
         byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
         try (InputStream inputStream = new ByteArrayInputStream(bytes)) {
             ossClient.putObject(properties.getBucketName(), objectName, inputStream);
+            // 返回访问路径 (如果配了 domain 则优先使用 domain，否则走默认拼接)
             return objectName;
         } catch (IOException e) {
             log.error("上传小说章节到 OSS 失败: {}", objectName, e);

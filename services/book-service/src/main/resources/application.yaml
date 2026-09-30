@@ -47,9 +47,9 @@ spring:
 # ========================================================
 mybatis-plus:
   # XML 映射文件存放位置
-  mapper-locations: classpath*:/com.kun.service.book.mapper/**/*.xml
+  mapper-locations: classpath*:/mapper/**/*.xml
   # 实体类包路径 (支持通配符)
-  type-aliases-package: com.kun.service.user.entity
+  type-aliases-package: com.kun.service.book.domain
   configuration:
     # 开启数据库下划线字段到 Java 驼峰属性映射 (例如: create_time -> createTime)
     map-underscore-to-camel-case: true
@@ -82,8 +82,8 @@ knife4j:
 
 
 
-  oss:
-    region: cn-beijing
-    endpoint: oss-cn-beijing.aliyuncs.com
-    bucketName: xiao-shuo-han
-    domain: https://xiao-shuo-han.oss-cn-beijing.aliyuncs.com # 自定义域名或访问域名
+oss:
+  region: cn-beijing
+  endpoint: oss-cn-beijing.aliyuncs.com
+  bucketName: xiao-shuo-han
+  domain: https://xiao-shuo-han.oss-cn-beijing.aliyuncs.com # 自定义域名或访问域名

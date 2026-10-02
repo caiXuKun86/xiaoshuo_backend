@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kun.service.shelf.mapper.ReadHistoryMapper">
+
+    <delete id="deleteByBookIds">
+        delete from read_history where
+        user_id = #{userId}
+        and book_id in
+        <foreach collection="bookIds" separator="," open="(" close=")" item="bookId">
+            #{bookId}
+        </foreach>
+    </delete>
+</mapper>

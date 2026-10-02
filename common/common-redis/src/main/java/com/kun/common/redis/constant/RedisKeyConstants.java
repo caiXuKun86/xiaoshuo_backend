@@ -67,9 +67,9 @@ public final class RedisKeyConstants {
 
     // ==================== 4. 进度与书架服务 (Shelf Service) ====================
     /**
-     * 跨端高频阅读进度实时缓存 (防抖打点暂存) Key: shelf:progress:{userId}:{bookId}
+     * 跨端高频阅读进度实时缓存 (防抖打点暂存) HashKey: shelf:progress:{userId} Filed: bookId
      */
-    public static final String SHELF_PROGRESS_PREFIX = "shelf:progress:";
+    public static final String SHELF_PROGRESS_PREFIX = "shelf:progress:%s";
 
     /**
      * 用户书架列表缓存 Key: shelf:list:{userId}

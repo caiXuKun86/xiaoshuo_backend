@@ -43,8 +43,9 @@ public class BookDTO implements Serializable {
 
     private String latestChapterName;
     private String latestChapterTime;
-
+    private Integer ratingCount;
     private BigDecimal score;
+    private Integer totalScore;
 
     private Integer status;
 }

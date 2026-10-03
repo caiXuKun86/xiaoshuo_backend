@@ -71,10 +71,6 @@ public final class RedisKeyConstants {
      */
     public static final String SHELF_PROGRESS_PREFIX = "shelf:progress:%s";
 
-    /**
-     * 用户书架列表缓存 Key: shelf:list:{userId}
-     */
-    public static final String SHELF_LIST_PREFIX = "shelf:list:";
 
     // ==================== 5. 互动评论服务 (Comment Service) ====================
     /**

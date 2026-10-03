@@ -1,9 +1,9 @@
 server:
-  port: 8082
+  port: 8084
 
 spring:
   application:
-    name: book-service
+    name: comment-service
   cloud:
     nacos:
       discovery:
@@ -15,7 +15,7 @@ spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     # 根据实际情况替换数据库名（如 novel_user）
-    url: jdbc:mysql://127.0.0.1:3306/book?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://127.0.0.1:3306/comment?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: 1234
     hikari:
@@ -49,7 +49,7 @@ mybatis-plus:
   # XML 映射文件存放位置
   mapper-locations: classpath*:/mapper/**/*.xml
   # 实体类包路径 (支持通配符)
-  type-aliases-package: com.kun.service.book.domain
+  type-aliases-package: com.kun.service.shelf.domain
   configuration:
     # 开启数据库下划线字段到 Java 驼峰属性映射 (例如: create_time -> createTime)
     map-underscore-to-camel-case: true
@@ -80,22 +80,19 @@ knife4j:
     language: zh_cn
 
 
-
-
-oss:
-  region: cn-beijing
-  endpoint: oss-cn-beijing.aliyuncs.com
-  bucketName: xiao-shuo-han
-  domain: https://xiao-shuo-han.oss-cn-beijing.aliyuncs.com # 自定义域名或访问域名
 rocketmq:
   # NameServer 地址（Docker 映射到本机的 9876 端口）
   name-server: 127.0.0.1:9876
   producer:
     # 生产者所属组名
-    group: book-producer-group
+    group: comment-producer-group
     # 发送超时时间（毫秒）
     send-message-timeout: 3000
     # 消息发送失败重试次数
     retry-times-when-send-failed: 2
     # 关键：关闭 VIP 通道，避免刚才遇到的 10909 端口连接失败
     send-message-with-vip-channel-enable: false
+
+
+
+

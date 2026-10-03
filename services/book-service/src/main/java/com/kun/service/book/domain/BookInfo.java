@@ -98,11 +98,21 @@ public class BookInfo extends BaseEntity {
      * 总书架收藏量
      */
     private Integer collectCount;
+    /**
+     * 评分人数
+     */
+    private Integer ratingCount;
+
 
     /**
      * 综合评分 (如 9.6 分)
      */
     private BigDecimal score;
+    /**
+     * 评分总数
+     */
+    private Integer totalScore;
+
 
     /**
      * 运营状态 (0:草稿 1:上架 2:下架封禁)

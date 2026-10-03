@@ -7,6 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
+import java.util.List;
+
 @Slf4j
 @Component
 public class BookFeignClientFallbackFactory implements FallbackFactory<BookFeignClient> {
@@ -20,6 +23,11 @@ public class BookFeignClientFallbackFactory implements FallbackFactory<BookFeign
                 log.error("调用 service-book 失败，触发降级，原因: {}", cause.getMessage());
                 // 返回兜底的默认值或友好提示
                 return Result.fail(503, "用户服务不可用(降级响应)");
+            }
+
+            @Override
+            public Result<List<BookDTO>> getBookListById(Collection<Long> ids) {
+                return null;
             }
 
             @Override

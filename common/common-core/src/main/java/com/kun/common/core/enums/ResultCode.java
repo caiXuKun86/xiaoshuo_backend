@@ -64,6 +64,7 @@ public enum ResultCode implements IResultCode {
     PROGRESS_SYNC_CONFLICT(40003, "阅读进度版本冲突"),
 
     // ==================== 50000 ~ 59999 互动评论服务 (Comment) ====================
+    RATING_SCORE_ILLEGAL(50001, "评分分值非法（必须在 1 到 5 之间）"),
     COMMENT_SENSITIVE_REJECT(50001, "评论内容包含敏感违规词，无法发布"),
     COMMENT_FREQUENCY_LIMIT(50002, "发言过于频繁，请休息一下再发"),
     COMMENT_NOT_FOUND(50003, "评论不存在或已被原作者删除"),

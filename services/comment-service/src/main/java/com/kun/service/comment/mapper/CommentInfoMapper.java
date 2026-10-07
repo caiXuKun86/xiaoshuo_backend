@@ -1,7 +1,7 @@
 package com.kun.service.comment.mapper;
 
-import com.kun.service.comment.domain.CommentInfo;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.kun.service.comment.domain.CommentInfo;
 
 /**
 * @author Lenovo

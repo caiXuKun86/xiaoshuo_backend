@@ -35,7 +35,7 @@ public final class RedisKeyConstants {
     /**
      * 每日连续签到打卡 BitMap Key: user:signin:{userId}:{yyyyMM}
      */
-    public static final String USER_SIGNIN_BITMAP_PREFIX = "user:signin:";
+    public static final String USER_SIGNIN_BITMAP_PREFIX = "user:signin:%s:%s";
 
 
 
@@ -51,7 +51,7 @@ public final class RedisKeyConstants {
     /**
      * 图书基础元数据缓存 Key: book:info:{bookId}
      */
-    public static final String BOOK_INFO_PREFIX = "book:info:";
+    public static final String BOOK_INFO_PREFIX = "book:info:%s";
 
     /**
      * 章节最新 20 章热门正文缓存 Key: book:chapter:content:{chapterId}
@@ -73,20 +73,31 @@ public final class RedisKeyConstants {
 
 
     // ==================== 5. 互动评论服务 (Comment Service) ====================
+
+    /**
+     * 书籍评分分布式锁 "lock:comment:rating:{userId}:{bookId}"
+     */
+    public static final String LOCK_COMMENT_RATING = "lock:comment:rating:%s:%s";
+
     /**
      * 评论点赞去重与计数 Set: comment:likes:{commentId}
      */
-    public static final String COMMENT_LIKE_SET_PREFIX = "comment:likes:";
+    public static final String COMMENT_LIKE_SET_PREFIX = "comment:likes:%s";
 
     /**
-     * 段评气泡聚合统计 Hash: comment:paragraph_stat:{chapterId} (field: paragraph_index, value: count)
+     * 评论点赞计数 HASH: comment:likes:count (field comment_id , value: count)
      */
-    public static final String COMMENT_PARA_STAT_PREFIX = "comment:paragraph_stat:";
+    public static final String COMMENT_LIKES_COUNT_PREFIX = "comment:likes:";
+
+    /**
+     * 段评气泡聚合统计 Hash: chapter:paragraph_comments:{chapterId} (field: paragraph_index, value: count)
+     */
+    public static final String COMMENT_PARA_STAT_PREFIX = "chapter:paragraph_comments:%s";
 
     /**
      * 用户发评冷却限制 Key: comment:cooldown:{userId}
      */
-    public static final String COMMENT_COOLDOWN_PREFIX = "comment:cooldown:";
+    public static final String COMMENT_COOLDOWN_PREFIX = "comment:cooldown:%s";
 
     // ==================== 6. 交易支付服务 (Pay Service) ====================
     /**

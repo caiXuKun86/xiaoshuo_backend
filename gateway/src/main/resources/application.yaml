@@ -30,6 +30,22 @@ spring:
           filters:
             # 剪切掉前 2 级路径前缀 (/api/v1)，下游服务实际接收 /user/**
             - StripPrefix=2
+        - id: shelf-service-route
+          uri: lb://shelf-service
+          predicates:
+            - Path=/api/v1/shelf/**
+          filters:
+            # 剪切掉前 2 级路径前缀 (/api/v1)，下游服务实际接收 /user/**
+            - StripPrefix=2
+        - id: comment-service-route
+          uri: lb://comment-service
+          predicates:
+            - Path=/api/v1/comment/**
+          filters:
+            # 剪切掉前 2 级路径前缀 (/api/v1)，下游服务实际接收 /user/**
+            - StripPrefix=2
+
+
 
   data:
     redis:
@@ -50,7 +66,12 @@ gateway:
       - /api/v1/book/categories
       - /api/v1/book/filter
       - /api/v1/book/detail/**
-      - /api/v1/book/author/**
+      - /api/v1/book/author/profile/**
       - /api/v1/book/**/catalog
       - /api/v1/book/chapter/**/content
+      - /api/v1/comment/rating/{bookId}
       - /api/v1/pay/notify/**
+      - /api/v1/comment/list
+      - /api/v1/comment/{rootId}/replies
+      - /api/v1/comment/paragraph/bubbles/**
+      - /api/v1/comment/paragraph/list

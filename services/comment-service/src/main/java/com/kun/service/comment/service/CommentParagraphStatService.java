@@ -1,7 +1,8 @@
 package com.kun.service.comment.service;
 
-import com.kun.service.comment.domain.CommentParagraphStat;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.kun.service.comment.domain.CommentParagraphStat;
+import com.kun.service.comment.dto.resp.BubbleCommentCountQueryRespDTO;
 
 /**
 * @author Lenovo
@@ -10,4 +11,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 */
 public interface CommentParagraphStatService extends IService<CommentParagraphStat> {
 
+    BubbleCommentCountQueryRespDTO getParagraphBubbles(Long chapterId);
+
+    void incrParagraphCommentCount(Long bookId, Long chapterId, Integer paragraphIndex);
 }

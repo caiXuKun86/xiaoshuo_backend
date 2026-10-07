@@ -11,7 +11,6 @@
             <result property="commentType" column="comment_type" />
             <result property="paragraphIndex" column="paragraph_index" />
             <result property="paragraphHash" column="paragraph_hash" />
-            <result property="quoteText" column="quote_text" />
             <result property="userId" column="user_id" />
             <result property="userNickname" column="user_nickname" />
             <result property="userAvatar" column="user_avatar" />
@@ -22,7 +21,6 @@
             <result property="content" column="content" />
             <result property="likeCount" column="like_count" />
             <result property="replyCount" column="reply_count" />
-            <result property="isTop" column="is_top" />
             <result property="status" column="status" />
             <result property="createTime" column="create_time" />
             <result property="updateTime" column="update_time" />
@@ -30,8 +28,10 @@
 
     <sql id="Base_Column_List">
         id,book_id,chapter_id,comment_type,paragraph_index,paragraph_hash,
-        quote_text,user_id,user_nickname,user_avatar,root_id,
+        user_id,user_nickname,user_avatar,root_id,
         parent_id,reply_to_user_id,reply_to_nickname,content,like_count,
-        reply_count,is_top,status,create_time,update_time
+        reply_count,status,create_time,update_time
     </sql>
+
+
 </mapper>

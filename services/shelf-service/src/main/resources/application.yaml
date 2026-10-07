@@ -85,7 +85,7 @@ rocketmq:
   name-server: 127.0.0.1:9876
   producer:
     # 生产者所属组名
-    group: novel-producer-group
+    group: shelf-producer-group
     # 发送超时时间（毫秒）
     send-message-timeout: 3000
     # 消息发送失败重试次数

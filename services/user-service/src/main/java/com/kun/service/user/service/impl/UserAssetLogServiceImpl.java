@@ -65,8 +65,7 @@ public class UserAssetLogServiceImpl extends ServiceImpl<UserAssetLogMapper, Use
         Long userId = UserContextHolder.getUserId();
 
         // 每日连续签到打卡 BitMap Key: user:signin:{userId}:{yyyyMM}
-        String key = RedisKeyConstants.USER_SIGNIN_BITMAP_PREFIX
-                + String.format("%d:%s", userId, date.format(DateTimeFormatter.ofPattern("yyyyMM")));
+        String key = String.format(RedisKeyConstants.USER_SIGNIN_BITMAP_PREFIX, userId, date.format(DateTimeFormatter.ofPattern("yyyyMM")));
 
         // 1. 原子操作打卡：SETBIT 返回的是该位置被设置前的值 (旧值)
         Boolean alreadyCheckedIn = stringRedisTemplate.opsForValue().setBit(key, dayOfMonth - 1, true);
@@ -137,7 +136,7 @@ public class UserAssetLogServiceImpl extends ServiceImpl<UserAssetLogMapper, Use
         Long userId = UserContextHolder.getUserId();
 
 
-        String key = RedisKeyConstants.USER_SIGNIN_BITMAP_PREFIX + String.format("%d:%s", userId, date.format(DateTimeFormatter.ofPattern("yyyyMM")));
+        String key = String.format(RedisKeyConstants.USER_SIGNIN_BITMAP_PREFIX, userId, date.format(DateTimeFormatter.ofPattern("yyyyMM")));
 
         Boolean bit = stringRedisTemplate.opsForValue().getBit(key, dayOfMonth - 1);
 

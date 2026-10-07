@@ -1,6 +1,5 @@
 package com.kun.service.shelf.domain;
 
-import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.kun.common.database.entity.BaseEntity;
@@ -26,7 +25,7 @@ public class ReadHistory extends BaseEntity {
     /**
      * 主键 ID (自增或雪花算法)
      */
-    @TableId(type = IdType.AUTO)
+    @TableId
     private Long id;
 
     /**

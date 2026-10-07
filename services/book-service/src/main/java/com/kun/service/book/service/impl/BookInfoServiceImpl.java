@@ -1,13 +1,19 @@
 package com.kun.service.book.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.ObjUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.kun.api.client.ShelfFeignClient;
+import com.kun.api.dto.shelf.ShelfDTO;
 import com.kun.common.core.context.UserContextHolder;
 import com.kun.common.core.enums.*;
 import com.kun.common.core.exception.BusinessException;
+import com.kun.common.core.result.Result;
 import com.kun.common.database.page.PageResult;
 import com.kun.common.redis.constant.RedisKeyConstants;
 import com.kun.common.redis.util.CacheUtil;
@@ -47,6 +53,7 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
 
     private final UserChapterUnlockMapper userChapterUnlockMapper;
 
+    private final ShelfFeignClient shelfFeignClient;
     private final CacheUtil cacheUtil;
     private final AuthorMapper authorMapper;
     private final CategoryMapper categoryMapper;
@@ -113,15 +120,25 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
     @Override
     public BookDetailQueryRespDTO queryBookDetailById(Long id) {
         BookDetailQueryRespDTO bookDetailQueryRespDTO = new BookDetailQueryRespDTO();
-        BookInfo bookInfo = this.getById(id);
-        if (bookInfo == null || !(Objects.equals(bookInfo.getStatus(), BookOpStatusEnum.ON_SHELF.getCode()))) {
+        String redisKey = String.format(RedisKeyConstants.BOOK_INFO_PREFIX, id);
+        BookInfo bookInfo = cacheUtil.queryWithMutex(redisKey, BookInfo.class, () -> this.getById(id), 2L, TimeUnit.HOURS);
+        if (bookInfo == null || !bookInfo.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
             throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
         }
         BeanUtil.copyProperties(bookInfo, bookDetailQueryRespDTO);
         bookDetailQueryRespDTO.setTags(List.of(bookInfo.getTags().split(",")));
-        //TODO
-        bookDetailQueryRespDTO.setRatingUserCount(0);
-        bookDetailQueryRespDTO.setUserInteract(null);
+        Long userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            bookDetailQueryRespDTO.setUserInteract(new BookDetailQueryRespDTO.UserInteract(false, null, null));
+            return bookDetailQueryRespDTO;
+        }
+        Result<ShelfDTO> result = shelfFeignClient.getShelfByBookId(id);
+        ShelfDTO shelfDTO = result.getData();
+        BookDetailQueryRespDTO.UserInteract userInteract = new BookDetailQueryRespDTO.UserInteract();
+        userInteract.setIsInBookshelf(shelfDTO.getIsInBookshelf());
+        userInteract.setLastReadChapterId(shelfDTO.getLastReadChapterId());
+        userInteract.setLastReadChapterName(shelfDTO.getLastReadChapterName());
+        bookDetailQueryRespDTO.setUserInteract(userInteract);
         return bookDetailQueryRespDTO;
     }
 
@@ -129,8 +146,11 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
     public BookCatalogQueryRespDTO queryBookCatalogById(Long bookId, String sortOrder) {
         Long userId = UserContextHolder.getUserId();
         BookInfo bookInfo = this.getById(bookId);
-        if (bookInfo == null || !(Objects.equals(bookInfo.getStatus(), BookOpStatusEnum.ON_SHELF.getCode()))) {
+        if (bookInfo == null || !bookInfo.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
             throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
+        }
+        if (!sortOrder.equals("ASC") && !sortOrder.equals("DESC")) {
+            throw new BusinessException(ResultCode.PARAM_INVALID);
         }
         List<BookChapter> bookChapters = cacheUtil.queryListWithMutex(
                 String.format(RedisKeyConstants.CACHE_BOOK_CATALOG, bookId),
@@ -142,7 +162,9 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
                 2L,
                 TimeUnit.HOURS
         );
-
+        if (sortOrder.equals("DESC")) {
+            CollUtil.reverse(bookChapters);
+        }
         List<UserChapterUnlock> userChapterUnlocks = userChapterUnlockMapper.selectList(new LambdaQueryWrapper<UserChapterUnlock>()
                 .eq(UserChapterUnlock::getUserId, userId)
                 .eq(UserChapterUnlock::getBookId, bookId)
@@ -168,14 +190,24 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
 
     }
 
+    //TODO
     @Override
     public BookPublishRespDTO publishBook(BookPublishReqDTO bookPublishReqDTO) {
         String bookName = bookPublishReqDTO.getBookName();
         Integer channelId = bookPublishReqDTO.getChannelId();
         Integer categoryId = bookPublishReqDTO.getCategoryId();
         List<String> tags = bookPublishReqDTO.getTags();
+        Integer status = bookPublishReqDTO.getStatus();
+        if(ObjUtil.hasEmpty(channelId,categoryId,status)){
+            throw new BusinessException(ResultCode.PARAM_INVALID);
+        }
+        if(StrUtil.isBlank(bookName)){
+            throw new BusinessException(ResultCode.PARAM_INVALID,"书名不能为空");
 
+        }
+        if (BookOpStatusEnum.getEnumByCode(status) == null || BookOpStatusEnum.BANNED.getCode().equals(status)) {
 
+        }
         Long userId = UserContextHolder.getUserId();
         Author author = authorMapper.selectOne(
                 new LambdaQueryWrapper<Author>()

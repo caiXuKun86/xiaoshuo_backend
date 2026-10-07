@@ -8,6 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
+import java.util.List;
+
 @Slf4j
 @Component
 public class UserFeignClientFallbackFactory implements FallbackFactory<UserFeignClient> {
@@ -19,6 +22,12 @@ public class UserFeignClientFallbackFactory implements FallbackFactory<UserFeign
             public Result<UserDTO> getUserById(Long userId) {
                 log.error("调用 service-user 失败，触发降级，原因: {}", cause.getMessage());
                 // 返回兜底的默认值或友好提示
+                return Result.fail(503, "用户服务不可用(降级响应)");
+            }
+
+            @Override
+            public Result<List<UserDTO>> getUserByIds(Collection<Long> userIds) {
+                log.error("调用 service-user 失败，触发降级，原因: {}", cause.getMessage());
                 return Result.fail(503, "用户服务不可用(降级响应)");
             }
 

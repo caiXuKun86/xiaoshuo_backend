@@ -43,20 +43,20 @@ public enum ResultCode implements IResultCode {
 
     // ==================== 30000 ~ 39999 图书与内容服务 (Book) ====================
     BOOK_NOT_FOUND(30001, "作品不存在或已下架"),
-    BOOK_BANNED(30002, "作品因合规原因整改中，暂不提供阅读"),
-    CHAPTER_NOT_FOUND(30003, "章节不存在或已被作者删除"),
-    CHAPTER_NEED_PURCHASE(30004, "本章节为付费章节，需要解锁后阅读"),
-    OSS_CONTENT_FETCH_FAIL(30005, "章节正文加载失败，请重试"),
-    PAY_INSUFFICIENT_POINTS(30006, "账户可用积分不足，无法完成兑换"),
-    CHAPTER_ALREADY_UNLOCKED(30007, "该章节已解锁，无需重复购买"),
-    PAN_NAME_ALREADY_EXISTED(30008, "笔名已存在"),
-    WRITER_ALREADY_REGISTER(30009, "您已经是认证作家"),
-    NOT_AN_AUTHOR(30010, "非作家"),
-    AUTHOR_BANNED(30011, "您已被封禁"),
-    ALREADY_HAVE_BOOK(30012, "书名重复"),
-    CATEGORY_NOT_EXISTED(30013, "分类不存在"),
-    AUTHOR_NOT_PERMITTED(30014, "无权修改或操作他人作品与章节"),
-    CONTENT_IS_BLANK(30015, "章节正文内容不能为空"),
+    CHAPTER_NOT_FOUND(30002, "章节不存在或已被作者删除"),
+    CHAPTER_NEED_PURCHASE(30003, "本章节为付费章节，需要解锁后阅读"),
+    OSS_CONTENT_FETCH_FAIL(30004, "章节正文加载失败，请重试"),
+    PAY_INSUFFICIENT_POINTS(30005, "账户可用积分不足，无法完成兑换"),
+    CHAPTER_ALREADY_UNLOCKED(30006, "该章节已解锁，无需重复购买"),
+    PAN_NAME_ALREADY_EXISTED(30007, "笔名已存在"),
+    WRITER_ALREADY_REGISTER(30008, "您已经是认证作家"),
+    NOT_AN_AUTHOR(30009, "非作家"),
+    AUTHOR_BANNED(30010, "您已被封禁"),
+    ALREADY_HAVE_BOOK(30011, "书名重复"),
+    CATEGORY_NOT_EXISTED(30012, "分类不存在"),
+    AUTHOR_NOT_PERMITTED(30013, "无权修改或操作他人作品与章节"),
+    UPLOAD_CONTENT_FAILED(30014, "内容上传失败,请重试"),
+    ALREADY_PUBLISH_INDEX(30015, "您已发送过本章节"),
 
     // ==================== 40000 ~ 49999 进度与书架服务 (Shelf) ====================
     SHELF_ALREADY_EXISTS(40001, "该书已存在于您的书架中"),
@@ -65,11 +65,13 @@ public enum ResultCode implements IResultCode {
 
     // ==================== 50000 ~ 59999 互动评论服务 (Comment) ====================
     RATING_SCORE_ILLEGAL(50001, "评分分值非法（必须在 1 到 5 之间）"),
-    COMMENT_SENSITIVE_REJECT(50001, "评论内容包含敏感违规词，无法发布"),
-    COMMENT_FREQUENCY_LIMIT(50002, "发言过于频繁，请休息一下再发"),
-    COMMENT_NOT_FOUND(50003, "评论不存在或已被原作者删除"),
-    PARAGRAPH_ANCHOR_LOST(50004, "该段落内容已被作者修订，段评已归档"),
-    ALREADY_RATED(50005, "您已经为本书评过分了"),
+    ALREADY_RATING(50002, "已评分"),
+    COMMENT_SENSITIVE_REJECT(50003, "评论内容包含敏感违规词，无法发布"),
+    COMMENT_FREQUENCY_LIMIT(50004, "发言过于频繁，请休息一下再发"),
+    COMMENT_NOT_FOUND(50005, "评论不存在或已被原作者删除"),
+    PARENT_COMMENT_NOT_FOUND(50006, "目标评论不存在或已被删除"),
+    NOAUTH_OP_COMMENT(50007, "无权操作该评论"),
+    ALREADY_RATED(50008, "您已经为本书评过分了"),
 
     // ==================== 60000 ~ 69999 交易支付服务 (Pay) ====================
 

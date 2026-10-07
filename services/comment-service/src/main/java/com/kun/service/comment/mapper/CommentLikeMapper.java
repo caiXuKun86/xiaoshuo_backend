@@ -2,6 +2,11 @@ package com.kun.service.comment.mapper;
 
 import com.kun.service.comment.domain.CommentLike;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.kun.service.comment.mq.event.CommentLikeUpdateEvent;
+import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
+import java.util.Map;
 
 /**
 * @author Lenovo
@@ -11,6 +16,9 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 */
 public interface CommentLikeMapper extends BaseMapper<CommentLike> {
 
+    void batchUpsert(@Param("list") List<CommentLikeUpdateEvent> deduplicatedEvents);
+
+    void batchUpdateLikeCount(@Param("deltaMap") Map<Long, Integer> validDeltaMap);
 }
 
 

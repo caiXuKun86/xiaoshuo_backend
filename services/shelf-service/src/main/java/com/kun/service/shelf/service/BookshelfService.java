@@ -1,5 +1,6 @@
 package com.kun.service.shelf.service;
 
+import com.kun.api.dto.shelf.ShelfDTO;
 import com.kun.common.database.page.PageResult;
 import com.kun.service.shelf.domain.Bookshelf;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -32,4 +33,6 @@ public interface BookshelfService extends IService<Bookshelf> {
     ReadingProgressQueryRespDTO getProgressByBookId(Long bookId);
 
     void mergeShelf(BookShelfMergeReqDTO bookShelfMergeReqDTO);
+
+    ShelfDTO getShelfByBookId(Long bookId);
 }

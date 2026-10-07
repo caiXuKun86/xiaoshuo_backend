@@ -7,6 +7,7 @@ import com.kun.common.core.context.UserContextHolder;
 import com.kun.common.core.enums.ResultCode;
 import com.kun.common.core.exception.BusinessException;
 import com.kun.common.core.result.Result;
+import com.kun.common.redis.constant.RedisKeyConstants;
 import com.kun.service.comment.domain.BookRating;
 import com.kun.service.comment.dto.req.BookRatingReqDTO;
 import com.kun.service.comment.dto.resp.BookRatingDetailRespDTO;
@@ -16,9 +17,8 @@ import com.kun.service.comment.mq.event.BookRatingUpdateEvent;
 import com.kun.service.comment.service.BookRatingService;
 import lombok.RequiredArgsConstructor;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
-import org.apache.rocketmq.spring.support.RocketMQHeaders;
-import org.springframework.messaging.Message;
-import org.springframework.messaging.support.MessageBuilder;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -39,47 +39,55 @@ public class BookRatingServiceImpl extends ServiceImpl<BookRatingMapper, BookRat
 
     private final RocketMQTemplate rocketMQTemplate;
     private final BookFeignClient bookFeignClient;
+    private final RedissonClient redissonClient;
 
     @Override
     public BookRatingRespDTO bookRating(BookRatingReqDTO bookRatingReqDTO) {
         Long userId = UserContextHolder.getUserId();
         Long bookId = bookRatingReqDTO.getBookId();
         Integer score = bookRatingReqDTO.getScore();
-        Integer updateScore = 0;
         if (score < 1 || score > 5) {
             throw new BusinessException(ResultCode.RATING_SCORE_ILLEGAL);
         }
-        BookRating existRating = this.lambdaQuery()
-                .eq(BookRating::getUserId, userId)
-                .eq(BookRating::getBookId, bookId)
-                .one();
-        if (existRating != null) {
-            updateScore = score - existRating.getScore();
-            // 已评分 -> 更新覆盖
-            existRating.setScore(score);
-            this.updateById(existRating);
-        } else {
-            updateScore = score;
-            // 未评分 -> 首次新增
+        Result<BookDTO> result = bookFeignClient.getBookById(bookId);
+        if (result == null || result.getCode() != 200 || result.getData() == null) {
+            throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE);
+        }
+        BookDTO bookDTO = result.getData();
+        RLock lock = redissonClient.getLock(String.format(RedisKeyConstants.LOCK_COMMENT_RATING, userId, bookId));
+        boolean b = lock.tryLock();
+        if (!b) {
+            throw new BusinessException(ResultCode.REQUEST_RATE_LIMIT);
+        }
+        BigDecimal latestScore;
+        try {
+            Long count = this.lambdaQuery()
+                    .eq(BookRating::getUserId, userId)
+                    .eq(BookRating::getBookId, bookId)
+                    .count();
+            if (count > 0) {
+                throw new BusinessException(ResultCode.ALREADY_RATED);
+            }
             BookRating newRating = new BookRating();
             newRating.setUserId(userId);
             newRating.setBookId(bookId);
             newRating.setScore(score);
+            newRating.setUserId(userId);
             this.save(newRating);
-        }
-        Result<BookDTO> result = bookFeignClient.getBookById(bookId);
-        BookDTO bookDTO = result.getData();
-        BookRatingUpdateEvent event = new BookRatingUpdateEvent(bookId, updateScore, LocalDateTime.now());
-        Message<BookRatingUpdateEvent> message = MessageBuilder
-                .withPayload(event)
-                .setHeader(RocketMQHeaders.TAGS, "tag-bookRating-update")
-                .build();
 
-        rocketMQTemplate.sendOneWay("comment-topic", message);
-        Integer ratingCount = bookDTO.getRatingCount();
-        Integer totalScore = bookDTO.getTotalScore();
-        BigDecimal latestScore = BigDecimal.valueOf(totalScore + updateScore)
-                .divide(BigDecimal.valueOf(ratingCount + 1), 1, RoundingMode.HALF_UP);
+            BookRatingUpdateEvent event = new BookRatingUpdateEvent(bookId, score, LocalDateTime.now());
+
+            rocketMQTemplate.syncSend("comment-topic:tag-bookRating-update", event);
+            Integer ratingCount = bookDTO.getRatingCount();
+            Integer totalScore = bookDTO.getTotalScore();
+            latestScore = BigDecimal.valueOf(totalScore + score)
+                    .divide(BigDecimal.valueOf(ratingCount + 1), 1, RoundingMode.HALF_UP);
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+
 
         // 6. 构造并返回结果
         return BookRatingRespDTO.builder()
@@ -94,6 +102,9 @@ public class BookRatingServiceImpl extends ServiceImpl<BookRatingMapper, BookRat
         List<BookRating> ratingList = this.list();
         Map<Integer, List<BookRating>> collect = ratingList.stream().collect(Collectors.groupingBy(BookRating::getScore));
         Result<BookDTO> result = bookFeignClient.getBookById(bookId);
+        if (result == null || result.getCode() != 200 || result.getData() == null) {
+            throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
+        }
         BookDTO bookDTO = result.getData();
         BookRatingDetailRespDTO respDTO = new BookRatingDetailRespDTO();
         respDTO.setBookId(bookId);
@@ -101,25 +112,16 @@ public class BookRatingServiceImpl extends ServiceImpl<BookRatingMapper, BookRat
         respDTO.setRatingCount(bookDTO.getRatingCount());
 
         BigDecimal ratingCount = new BigDecimal(bookDTO.getRatingCount());
-        BigDecimal one = new BigDecimal(collect.get(1).size()).divide(ratingCount, 1, RoundingMode.HALF_UP);
+        BigDecimal one = new BigDecimal(collect.get(1).size() * 100).divide(ratingCount, 1, RoundingMode.HALF_UP);
         respDTO.setOneStarPercent(one);
-        BigDecimal two = new BigDecimal(collect.get(2).size()).divide(ratingCount, 1, RoundingMode.HALF_UP);
+        BigDecimal two = new BigDecimal(collect.get(2).size() * 100).divide(ratingCount, 1, RoundingMode.HALF_UP);
         respDTO.setTwoStarPercent(two);
-        BigDecimal three = new BigDecimal(collect.get(3).size()).divide(ratingCount, 1, RoundingMode.HALF_UP);
+        BigDecimal three = new BigDecimal(collect.get(3).size() * 100).divide(ratingCount, 1, RoundingMode.HALF_UP);
         respDTO.setThreeStarPercent(three);
-        BigDecimal four = new BigDecimal(collect.get(4).size()).divide(ratingCount, 1, RoundingMode.HALF_UP);
+        BigDecimal four = new BigDecimal(collect.get(4).size() * 100).divide(ratingCount, 1, RoundingMode.HALF_UP);
         respDTO.setFourStarPercent(four);
-        respDTO.setFiveStarPercent(ratingCount.subtract(one).subtract(two).subtract(three).subtract(four));
+        respDTO.setFiveStarPercent(new BigDecimal(100).subtract(one).subtract(two).subtract(three).subtract(four));
 
-        Long userId = UserContextHolder.getUserId();
-        BookRating userBookRating = this.lambdaQuery()
-                .eq(BookRating::getBookId, bookId)
-                .eq(BookRating::getUserId, userId)
-                .one();
-        if (userBookRating != null) {
-            respDTO.setUserScore(userBookRating.getScore());
-
-        }
         return respDTO;
 
 

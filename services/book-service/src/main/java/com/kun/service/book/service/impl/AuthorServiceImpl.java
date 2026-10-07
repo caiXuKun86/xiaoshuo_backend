@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kun.api.client.UserFeignClient;
 import com.kun.api.dto.user.RegisterWriterDTO;
+import com.kun.api.dto.user.UserDTO;
 import com.kun.common.core.context.UserContextHolder;
 import com.kun.common.core.enums.AuthorStatusTypeEnum;
 import com.kun.common.core.enums.BookOpStatusEnum;
@@ -43,6 +44,9 @@ public class AuthorServiceImpl extends ServiceImpl<AuthorMapper, Author> impleme
     public AuthorDetailQueryRespDTO queryBookDetailById(Long id) {
 
         Author author = this.getById(id);
+        if (author == null) {
+            throw new BusinessException(ResultCode.USER_NOT_FOUND);
+        }
 
         List<BookInfo> bookInfoList = bookInfoMapper.selectList(
                 new LambdaQueryWrapper<BookInfo>()
@@ -70,7 +74,6 @@ public class AuthorServiceImpl extends ServiceImpl<AuthorMapper, Author> impleme
     public AuthorRegisterRespDTO registerAuthor(AuthorRegisterReqDTO authorRegisterReqDTO) {
         Long userId = UserContextHolder.getUserId();
         String penName = authorRegisterReqDTO.getPenName();
-        String avatar = authorRegisterReqDTO.getAvatar();
         String intro = authorRegisterReqDTO.getIntro();
 
         Long count = this.lambdaQuery()
@@ -90,48 +93,26 @@ public class AuthorServiceImpl extends ServiceImpl<AuthorMapper, Author> impleme
         if (booleanResult == null || booleanResult.getCode() != 200 || !Boolean.TRUE.equals(booleanResult.getData())) {
             throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE, "更新用户信息失败");
         }
+        Result<UserDTO> userDTOResult = userFeignClient.getUserById(userId);
+        if (userDTOResult == null || userDTOResult.getCode() != 200 || userDTOResult.getData()==null) {
+            throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE, "查找用户信息失败");
+        }
         Author author = new Author();
         author.setUserId(userId);
         author.setPenName(penName);
         author.setStatus(AuthorStatusTypeEnum.NORMAL.getCode());
-        if(avatar==null){
-            author.setAvatar(avatar);
-        }
-        author.setAvatar(avatar);
+
+        author.setAvatar(userDTOResult.getData().getAvatar());
         author.setIntro(intro);
         author.setStatus(AuthorStatusTypeEnum.FORBIDDEN.getCode());
         boolean save = this.save(author);
         if (!save) {
-            boolean isSuccess = false;
-            String failReason = "";
-            try {
-                // 1. 显式接收远程调用结果
-                Result<Boolean> result = userFeignClient.registerWriter(RegisterWriterDTO.builder().isWriter(0).build());
-
-                // 2. 严谨校验：判空、状态码、返回的业务布尔值
-                if (result == null) {
-                    failReason = "远程返回结果为 null";
-                } else if (result.getCode() != 200) {
-                    failReason = "下游业务处理失败: " + result.getMessage() + " (code: " + result.getCode() + ")";
-                } else if (!Boolean.TRUE.equals(result.getData())) {
-                    failReason = "修改操作返回 false";
-                } else {
-                    // 真正成功
-                    isSuccess = true;
-                    log.info("更改用户信息成功, userId: {}", userId);
-                }
-            } catch (Exception ex) {
-                // 捕获网络超时、连接拒绝等真正的底层异常
-                failReason = "Feign 调用底层抛出异常: " + ex.getMessage();
-                log.error("调用用户服务退款异常", ex);
+            // 1. 显式接收远程调用结果
+            Result<Boolean> result = userFeignClient.registerWriter(RegisterWriterDTO.builder().isWriter(0).build());
+            if (result == null || result.getCode() != 200 || result.getData().equals(Boolean.FALSE)) {
+                log.error("【严重警告】更改用户信息失败，需人工介入！userId: {}",userId);
             }
 
-            // 3. 统一处理失败逻辑（无论是网络不通，还是下游业务返回失败）
-            if (!isSuccess) {
-                log.error("【严重警告】更改用户信息失败，需人工介入！userId: {},  原因: {}",
-                        userId, failReason);
-
-            }
         }
         AuthorRegisterRespDTO authorRegisterRespDTO = new AuthorRegisterRespDTO();
         BeanUtil.copyProperties(author, authorRegisterRespDTO);

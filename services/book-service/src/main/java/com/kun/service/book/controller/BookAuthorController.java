@@ -16,7 +16,7 @@ public class BookAuthorController {
     private final AuthorService authorService;
 
 
-    @GetMapping("/{authorId}")
+    @GetMapping("/profile/{authorId}")
     public Result<AuthorDetailQueryRespDTO> queryBookDetail(@PathVariable("authorId") Long authorId) {
         AuthorDetailQueryRespDTO authorDetailQueryRespDTO = authorService.queryBookDetailById(authorId);
 

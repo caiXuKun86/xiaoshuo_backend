@@ -65,10 +65,7 @@ public class UserAssetLog extends BaseEntity {
      */
     private String title;
 
-    /**
-     * 防重幂等键 (防重复加减积分)
-     */
-    private String idempotentKey;
+
 
 
 }

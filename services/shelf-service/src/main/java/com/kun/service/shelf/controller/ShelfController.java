@@ -36,8 +36,8 @@ public class ShelfController {
     }
 
     @DeleteMapping("/remove")
-    public Result<Void> removeBooks2Shelf(List<Long> ids) {
-        bookshelfService.removeBooks2Shelf(ids);
+    public Result<Void> removeBooks2Shelf(@RequestParam("bookIds") List<Long> bookIds) {
+        bookshelfService.removeBooks2Shelf(bookIds);
         return Result.success();
     }
 

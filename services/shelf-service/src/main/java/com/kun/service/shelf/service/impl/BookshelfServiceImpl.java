@@ -2,6 +2,8 @@ package com.kun.service.shelf.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.ObjUtil;
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -9,8 +11,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kun.api.client.BookFeignClient;
 import com.kun.api.dto.book.BookDTO;
+import com.kun.api.dto.shelf.ShelfDTO;
 import com.kun.common.core.constant.NovelConstants;
 import com.kun.common.core.context.UserContextHolder;
+import com.kun.common.core.enums.BookOpStatusEnum;
 import com.kun.common.core.enums.ResultCode;
 import com.kun.common.core.exception.BusinessException;
 import com.kun.common.core.result.Result;
@@ -33,20 +37,16 @@ import com.kun.service.shelf.service.BookshelfService;
 import com.kun.service.shelf.service.ReadHistoryService;
 import lombok.RequiredArgsConstructor;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
-import org.apache.rocketmq.spring.support.RocketMQHeaders;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.messaging.Message;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -69,7 +69,6 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
     public PageResult<BookShelfQueryRespDTO> pageBookShelfList(BookShelfPageReqDTO bookShelfPageReqDTO) {
 
         Long userId = UserContextHolder.getUserId();
-        Page<Bookshelf> page = bookShelfPageReqDTO.toPage();
 
         LambdaQueryWrapper<Bookshelf> queryWrapper = new LambdaQueryWrapper<Bookshelf>()
                 .eq(Bookshelf::getUserId, userId);
@@ -79,7 +78,7 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
             queryWrapper.orderByDesc(Bookshelf::getLastReadTime);
         }
 
-        Page<Bookshelf> bookshelfPage = this.page(page, queryWrapper);
+        Page<Bookshelf> bookshelfPage = this.page(bookShelfPageReqDTO.toPage(), queryWrapper);
         List<Bookshelf> records = bookshelfPage.getRecords();
         List<Long> bookIds = records.stream().map(Bookshelf::getBookId).toList();
         Result<List<BookDTO>> result = bookFeignClient.getBookListById(bookIds);
@@ -108,6 +107,22 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
     public BookShelfAddRespDTO addBook2Shelf(BookShelfAddReqDTO bookShelfAddReqDTO) {
         Long userId = UserContextHolder.getUserId();
         Long bookId = bookShelfAddReqDTO.getBookId();
+        Long lastReadChapterId = bookShelfAddReqDTO.getLastReadChapterId();
+        Integer lastReadChapterIndex = bookShelfAddReqDTO.getLastReadChapterIndex();
+        String lastReadChapterName = bookShelfAddReqDTO.getLastReadChapterName();
+        Integer lastReadParagraph = bookShelfAddReqDTO.getLastReadParagraph();
+        BigDecimal readPercent = bookShelfAddReqDTO.getReadPercent();
+        if (ObjUtil.hasNull(lastReadChapterId, lastReadChapterIndex, lastReadChapterName, lastReadParagraph, readPercent)) {
+            throw new BusinessException(ResultCode.PARAM_INVALID);
+        }
+        if (readPercent.doubleValue() > 100.00) {
+            throw new BusinessException(ResultCode.PARAM_INVALID);
+        }
+        Result<BookDTO> result = bookFeignClient.getBookById(bookId);
+        BookDTO bookDTO = result.getData();
+        if (bookDTO == null || !bookDTO.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
+            throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
+        }
 
         Long count = this.lambdaQuery()
                 .eq(Bookshelf::getBookId, bookId)
@@ -124,6 +139,7 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
             throw new BusinessException(ResultCode.SHELF_CAPACITY_LIMIT);
         }
         Bookshelf bookshelf = BeanUtil.copyProperties(bookShelfAddReqDTO, Bookshelf.class);
+        bookshelf.setUserId(userId);
         boolean save = this.save(bookshelf);
         if (!save) {
             throw new BusinessException(ResultCode.OPERATION_FAILED);
@@ -148,7 +164,7 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
     public BookShelfSyncRespDTO syncProgress(BookShelfSyncReqDTO reqDTO) {
         Long userId = UserContextHolder.getUserId();
         // 1. 构建阅读进度对象
-        ReadingProgressSyncEvent readingProgressSyncEvent = ReadingProgressSyncEvent.builder()
+        ReadingProgressSyncEvent event = ReadingProgressSyncEvent.builder()
                 .userId(userId)
                 .bookId(reqDTO.getBookId())
                 .chapterId(reqDTO.getChapterId())
@@ -160,15 +176,12 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
                 .build();
         // 2. 依然第一时间写入 Redis Hash (保证换设备/跨端查询能瞬间读到)
         String hashKey = String.format(RedisKeyConstants.SHELF_PROGRESS_PREFIX, userId);
-        stringRedisTemplate.opsForHash().put(hashKey, String.valueOf(reqDTO.getBookId()), JSONUtil.toJsonStr(readingProgressSyncEvent));
+        stringRedisTemplate.opsForHash().put(hashKey, String.valueOf(reqDTO.getBookId()), JSONUtil.toJsonStr(event));
+        stringRedisTemplate.expire(hashKey, 14L + RandomUtil.randomLong(1, 5), TimeUnit.DAYS);
         // 3. 异步发送到 MQ (单向发送/可靠发送，仅需 1~2ms)
         // 采用 (userId + ":" + bookId) 作为 hashKey/shardingKey，保证同一个用户的同一本书落到同一个分区，保持局部有序
-        Message<ReadingProgressSyncEvent> message = MessageBuilder
-                .withPayload(readingProgressSyncEvent)
-                .setHeader(RocketMQHeaders.TAGS, "tag-progress-sync")
-                .build();
 
-        rocketMQTemplate.sendOneWay("shelf-topic", message);
+        rocketMQTemplate.sendOneWay("shelf-topic:tag-progress-sync", event);
         return new BookShelfSyncRespDTO(LocalDateTime.now());
     }
 
@@ -203,6 +216,8 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
 
         // 1. 合并书架列表 (Bookshelf)
         List<Bookshelf> localShelfList = bookShelfMergeReqDTO.getLocalShelfList();
+
+
         if (CollUtil.isNotEmpty(localShelfList)) {
             // 本地记录按 bookId 去重并保留阅读时间最新的一条（写折叠）
             Map<Long, Bookshelf> latestLocalShelfMap = new HashMap<>();
@@ -218,41 +233,60 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
             }
 
             List<Long> bookIdList = new ArrayList<>(latestLocalShelfMap.keySet());
+
+
             if (CollUtil.isNotEmpty(bookIdList)) {
-                List<Bookshelf> bookshelfList = this.lambdaQuery()
-                        .eq(Bookshelf::getUserId, userId)
-                        .in(Bookshelf::getBookId, bookIdList)
-                        .list();
-                Map<Long, Bookshelf> bookShelfMap = bookshelfList.stream()
-                        .collect(Collectors.toMap(Bookshelf::getBookId, b -> b, (b1, b2) -> b1));
+                Result<List<BookDTO>> result = bookFeignClient.getBookListById(bookIdList);
+                if (result == null || result.getCode() != 200 || result.getData()==null) {
+                    throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE);
+                }
+                List<BookDTO> bookDTOList = result.getData();
+                Set<Long> existBookIds = bookDTOList.stream()
+                        .filter(bookDTO -> bookDTO.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode()))
+                        .map(BookDTO::getId)
+                        .collect(Collectors.toSet());
+                bookIdList = bookIdList.stream().filter(existBookIds::contains).collect(Collectors.toList());
+                if (CollUtil.isNotEmpty(bookIdList)) {
+                    List<Bookshelf> bookshelfList = this.lambdaQuery()
+                            .eq(Bookshelf::getUserId, userId)
+                            .in(Bookshelf::getBookId, bookIdList)
+                            .list();
+                    Map<Long, Bookshelf> bookShelfMap = bookshelfList.stream()
+                            .collect(Collectors.toMap(Bookshelf::getBookId, b -> b, (b1, b2) -> b1));
 
-                List<Bookshelf> updateShelfList = new ArrayList<>();
-                List<Bookshelf> insertShelfList = new ArrayList<>();
+                    List<Bookshelf> updateShelfList = new ArrayList<>();
+                    List<Bookshelf> insertShelfList = new ArrayList<>();
 
-                for (Bookshelf local : latestLocalShelfMap.values()) {
-                    Long bookId = local.getBookId();
-                    local.setUserId(userId);
-
-                    if (bookShelfMap.containsKey(bookId)) {
-                        Bookshelf dbShelf = bookShelfMap.get(bookId);
-                        // 本地进度更新时才覆盖云端记录
-                        if (local.getLastReadTime() != null &&
-                                (dbShelf.getLastReadTime() == null || local.getLastReadTime().isAfter(dbShelf.getLastReadTime()))) {
-                            local.setId(dbShelf.getId()); // 关键：绑定云端主键 ID 才能执行 updateBatchById
-                            updateShelfList.add(local);
+                    for (Bookshelf local : latestLocalShelfMap.values()) {
+                        Long bookId = local.getBookId();
+                        // 过滤未上架/无效图书
+                        if (!existBookIds.contains(bookId)) {
+                            continue;
                         }
-                    } else {
-                        local.setId(null); // 清空本地可能存在的临时 ID，由数据库生成主键
-                        insertShelfList.add(local);
+                        local.setUserId(userId);
+
+                        if (bookShelfMap.containsKey(bookId)) {
+                            Bookshelf dbShelf = bookShelfMap.get(bookId);
+                            // 本地进度更新时才覆盖云端记录
+                            if (local.getLastReadTime() != null &&
+                                    (dbShelf.getLastReadTime() == null || local.getLastReadTime().isAfter(dbShelf.getLastReadTime()))) {
+                                local.setId(dbShelf.getId()); // 关键：绑定云端主键 ID 才能执行 updateBatchById
+                                updateShelfList.add(local);
+                            }
+                        } else {
+                            local.setId(null); // 清空本地可能存在的临时 ID，由数据库生成主键
+                            insertShelfList.add(local);
+                        }
+                    }
+
+                    if (CollUtil.isNotEmpty(insertShelfList)) {
+                        this.saveBatch(insertShelfList);
+                    }
+                    if (CollUtil.isNotEmpty(updateShelfList)) {
+                        this.updateBatchById(updateShelfList);
                     }
                 }
 
-                if (CollUtil.isNotEmpty(insertShelfList)) {
-                    this.saveBatch(insertShelfList);
-                }
-                if (CollUtil.isNotEmpty(updateShelfList)) {
-                    this.updateBatchById(updateShelfList);
-                }
             }
         }
 
@@ -274,42 +308,88 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
 
             List<Long> historyBookIds = new ArrayList<>(latestLocalHistoryMap.keySet());
             if (CollUtil.isNotEmpty(historyBookIds)) {
-                List<ReadHistory> dbHistoryList = readHistoryService.lambdaQuery()
-                        .eq(ReadHistory::getUserId, userId)
-                        .in(ReadHistory::getBookId, historyBookIds)
-                        .list();
-                Map<Long, ReadHistory> dbHistoryMap = dbHistoryList.stream()
-                        .collect(Collectors.toMap(ReadHistory::getBookId, h -> h, (h1, h2) -> h1));
+                Result<List<BookDTO>> result = bookFeignClient.getBookListById(historyBookIds);
+                if (result == null || result.getCode() != 200 || result.getData()==null) {
+                    throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE);
+                }
+                List<BookDTO> bookDTOList = result.getData();
+                Set<Long> existBookIds = bookDTOList.stream()
+                        .filter(bookDTO -> bookDTO.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode()))
+                        .map(BookDTO::getId)
+                        .collect(Collectors.toSet());
+                historyBookIds = historyBookIds.stream().filter(existBookIds::contains).collect(Collectors.toList());
 
-                List<ReadHistory> updateHistoryList = new ArrayList<>();
-                List<ReadHistory> insertHistoryList = new ArrayList<>();
+                if(CollUtil.isNotEmpty(historyBookIds)){
+                    List<ReadHistory> dbHistoryList = readHistoryService.lambdaQuery()
+                            .eq(ReadHistory::getUserId, userId)
+                            .in(ReadHistory::getBookId, historyBookIds)
+                            .list();
+                    Map<Long, ReadHistory> dbHistoryMap = dbHistoryList.stream()
+                            .collect(Collectors.toMap(ReadHistory::getBookId, h -> h, (h1, h2) -> h1));
 
-                for (ReadHistory local : latestLocalHistoryMap.values()) {
-                    Long bookId = local.getBookId();
-                    local.setUserId(userId);
+                    List<ReadHistory> updateHistoryList = new ArrayList<>();
+                    List<ReadHistory> insertHistoryList = new ArrayList<>();
 
-                    if (dbHistoryMap.containsKey(bookId)) {
-                        ReadHistory dbHistory = dbHistoryMap.get(bookId);
-                        // 本地进度更新时才覆盖云端记录
-                        if (local.getLastReadTime() != null &&
-                                (dbHistory.getLastReadTime() == null || local.getLastReadTime().isAfter(dbHistory.getLastReadTime()))) {
-                            local.setId(dbHistory.getId()); // 关键：绑定云端主键 ID 才能执行 updateBatchById
-                            updateHistoryList.add(local);
+                    for (ReadHistory local : latestLocalHistoryMap.values()) {
+                        Long bookId = local.getBookId();
+                        // 过滤未上架/无效图书
+                        if (!existBookIds.contains(bookId)) {
+                            continue;
                         }
-                    } else {
-                        local.setId(null); // 清空本地临时 ID，新增入库
-                        insertHistoryList.add(local);
+                        local.setUserId(userId);
+
+                        if (dbHistoryMap.containsKey(bookId)) {
+                            ReadHistory dbHistory = dbHistoryMap.get(bookId);
+                            // 本地进度更新时才覆盖云端记录
+                            if (local.getLastReadTime() != null &&
+                                    (dbHistory.getLastReadTime() == null || local.getLastReadTime().isAfter(dbHistory.getLastReadTime()))) {
+                                local.setId(dbHistory.getId()); // 关键：绑定云端主键 ID 才能执行 updateBatchById
+                                updateHistoryList.add(local);
+                            }
+                        } else {
+                            local.setId(null); // 清空本地临时 ID，新增入库
+                            insertHistoryList.add(local);
+                        }
+                    }
+
+                    if (CollUtil.isNotEmpty(insertHistoryList)) {
+                        readHistoryService.saveBatch(insertHistoryList);
+                    }
+                    if (CollUtil.isNotEmpty(updateHistoryList)) {
+                        readHistoryService.updateBatchById(updateHistoryList);
                     }
                 }
 
-                if (CollUtil.isNotEmpty(insertHistoryList)) {
-                    readHistoryService.saveBatch(insertHistoryList);
-                }
-                if (CollUtil.isNotEmpty(updateHistoryList)) {
-                    readHistoryService.updateBatchById(updateHistoryList);
-                }
             }
         }
+    }
+
+    @Override
+    public ShelfDTO getShelfByBookId(Long bookId) {
+        Long userId = UserContextHolder.getUserId();
+        Bookshelf bookshelf = this.lambdaQuery()
+                .eq(Bookshelf::getBookId, bookId)
+                .eq(Bookshelf::getUserId, userId)
+                .one();
+        if (bookshelf != null) {
+            return ShelfDTO.builder()
+                    .isInBookshelf(true)
+                    .lastReadChapterId(bookshelf.getLastReadChapterId())
+                    .lastReadChapterName(bookshelf.getLastReadChapterName())
+                    .build();
+        }
+        ReadHistory readHistory = readHistoryMapper.selectOne(new LambdaQueryWrapper<ReadHistory>()
+                .eq(ReadHistory::getBookId, bookId)
+                .eq(ReadHistory::getUserId, userId));
+        if (readHistory == null) {
+            return ShelfDTO.builder().isInBookshelf(false).build();
+        } else {
+            return ShelfDTO.builder().isInBookshelf(false)
+                    .lastReadChapterName(readHistory.getLastReadChapterName())
+                    .lastReadChapterId(readHistory.getLastReadChapterId())
+                    .build();
+        }
+
     }
 }
 

@@ -6,10 +6,7 @@ import com.kun.service.shelf.dto.req.ReadHistoryPageReqDTO;
 import com.kun.service.shelf.dto.resp.ReadHistoryPageRespDTO;
 import com.kun.service.shelf.service.ReadHistoryService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -27,7 +24,7 @@ public class ReadHistoryController {
     }
 
     @DeleteMapping("/clear")
-    public Result<Void> clearReadHistory(List<Long> bookIds) {
+    public Result<Void> clearReadHistory(@RequestParam(value = "bookIds",required = false) List<Long> bookIds) {
         readHistoryService.clearReadHistory(bookIds);
         return Result.success();
 

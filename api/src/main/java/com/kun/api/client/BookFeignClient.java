@@ -7,6 +7,7 @@ import com.kun.common.core.result.Result;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.Collection;
 import java.util.List;
@@ -24,7 +25,7 @@ public interface BookFeignClient {
     Result<BookDTO> getBookById(@PathVariable("bookId") Long bookId);
 
     @GetMapping("/inner/book/list")
-    Result<List<BookDTO>> getBookListById(Collection<Long> ids);
+    Result<List<BookDTO>> getBookListById(@RequestParam("ids") Collection<Long> ids);
 
     /**
      * 根据章节 ID 查询章节信息 (用于单章兑换、计费核验等)

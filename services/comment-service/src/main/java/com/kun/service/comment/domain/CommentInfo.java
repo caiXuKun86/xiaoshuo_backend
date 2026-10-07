@@ -42,15 +42,6 @@ public class CommentInfo extends BaseEntity {
      */
     private Integer paragraphIndex;
 
-    /**
-     * 段落文本特征指纹 (MD5前8位，段落重锚定校验)
-     */
-    private String paragraphHash;
-
-    /**
-     * 段落引用原句快照 (段评弹出抽屉时展示原句)
-     */
-    private String quoteText;
 
     /**
      * 发评人用户 ID
@@ -102,10 +93,6 @@ public class CommentInfo extends BaseEntity {
      */
     private Integer replyCount;
 
-    /**
-     * 是否置顶 (0:否 1:是)
-     */
-    private Integer isTop;
 
     /**
      * 状态 (0:待审 1:正常 2:作者/读者自删 3:违规下架)

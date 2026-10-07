@@ -37,10 +37,6 @@ public class CommentParagraphStat extends BaseEntity {
      */
     private Integer paragraphIndex;
 
-    /**
-     * 段落特征指纹快照 (校验段落一致性)
-     */
-    private String paragraphHash;
 
     /**
      * 该段落累计评论总数 (气泡展示数)

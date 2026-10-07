@@ -24,10 +24,7 @@ public class BookRatingDetailRespDTO implements Serializable {
      */
     private Long bookId;
 
-    /**
-     * 用户评分
-     */
-    private Integer userScore;
+
     /**
      * 最新评分
      */

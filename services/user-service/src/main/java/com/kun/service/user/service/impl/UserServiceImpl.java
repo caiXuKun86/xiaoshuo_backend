@@ -59,8 +59,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (StrUtil.hasBlank(username, password, confirmPassword)) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "用户名和密码不能为空");
         }
-        if (username.length() < 4 || username.length() > 20) {
-            throw new BusinessException(ResultCode.PARAM_INVALID, "用户名必须4~20位");
+
+        if (!username.matches("^[a-zA-Z0-9]{6,20}$")) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "用户名必须6~20位,且不包含特殊字符");
         }
         if (password.length() < 8 || password.length() > 20) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "密码必须8~20位");
@@ -296,7 +297,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .eq(User::getId, userId)
                 .update();
         if (!update) {
-            throw new BusinessException(ResultCode.SYSTEM_ERROR, "修改失败");
+            throw new BusinessException(ResultCode.OPERATION_FAILED, "修改失败");
         }
 
     }

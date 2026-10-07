@@ -10,10 +10,7 @@ import com.kun.api.client.UserFeignClient;
 import com.kun.api.dto.user.UserDTO;
 import com.kun.api.dto.user.UserPointsUpdateDTO;
 import com.kun.common.core.context.UserContextHolder;
-import com.kun.common.core.enums.AssetChangeTypeEnum;
-import com.kun.common.core.enums.ChapterChargeEnum;
-import com.kun.common.core.enums.ChapterStatusEnum;
-import com.kun.common.core.enums.ResultCode;
+import com.kun.common.core.enums.*;
 import com.kun.common.core.exception.BusinessException;
 import com.kun.common.core.result.Result;
 import com.kun.common.oss.template.OssTemplate;
@@ -69,9 +66,10 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
     @Override
     public BookChapterQueryRespDTO queryBookChapter(Long bookId, Long chapterId) {
         BookInfo bookInfo = bookInfoMapper.selectById(bookId);
-        if (bookInfo == null) {
+        if (bookInfo == null || !bookInfo.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
             throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
         }
+
         BookChapter bookChapter = this.getById(chapterId);
         if (bookChapter == null) {
             throw new BusinessException(ResultCode.CHAPTER_NOT_FOUND);
@@ -137,7 +135,7 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
         Long userId = UserContextHolder.getUserId();
 
         BookInfo bookInfo = bookInfoMapper.selectById(bookId);
-        if (bookInfo == null) {
+        if (bookInfo == null || !bookInfo.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
             throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
         }
         BookChapter bookChapter = this.getById(chapterId);
@@ -155,7 +153,7 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
                 throw new BusinessException(ResultCode.CHAPTER_ALREADY_UNLOCKED);
             }
             Result<UserDTO> result = userFeignClient.getUserById(userId);
-            if (result.getCode() != 200) {
+            if (result == null || result.getCode() != 200) {
                 throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE, "用户服务调用失败");
             }
             UserDTO userDTO = result.getData();
@@ -192,27 +190,41 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
         if (ObjUtil.hasNull(chapterIndex, chapterName, isCharge)) {
             throw new BusinessException(ResultCode.PARAM_INVALID);
         }
+        if (StrUtil.isBlank(chapterName)) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "章节名称不能为空");
+        }
         if (StrUtil.isBlank(content)) {
-            throw new BusinessException(ResultCode.CONTENT_IS_BLANK);
+            throw new BusinessException(ResultCode.PARAM_INVALID, "章节正文不能为空");
         }
         //收费必须传入requiredPoints
         if (isCharge == 1 && requiredPoints == null) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "付费章节必须指定消费积分");
         }
-
         Long userId = UserContextHolder.getUserId();
         Author author = authorMapper.selectOne(new LambdaQueryWrapper<Author>().eq(Author::getUserId, userId));
         if (author == null) {
             throw new BusinessException(ResultCode.NOT_AN_AUTHOR);
         }
         BookInfo bookInfo = bookInfoMapper.selectById(bookId);
-        if (bookInfo == null) {
+        if (bookInfo == null || !bookInfo.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
             throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
         }
         if (!Objects.equals(bookInfo.getAuthorId(), author.getId())) {
             throw new BusinessException(ResultCode.AUTHOR_NOT_PERMITTED);
         }
-        String ossPath = ossTemplate.uploadChapterContent(String.format(OssTemplate.UPLOAD_CHAPTER, bookId, chapterIndex), content);
+        Long count = this.lambdaQuery()
+                .eq(BookChapter::getBookId, bookId)
+                .eq(BookChapter::getChapterIndex, chapterIndex)
+                .count();
+        if (count > 0) {
+            throw new BusinessException(ResultCode.ALREADY_PUBLISH_INDEX);
+        }
+        String ossPath;
+        try {
+            ossPath = ossTemplate.uploadChapterContent(String.format(OssTemplate.UPLOAD_CHAPTER, bookId, chapterIndex), content);
+        } catch (Exception e) {
+            throw new BusinessException(ResultCode.UPLOAD_CONTENT_FAILED);
+        }
 
         BookChapter bookChapter = new BookChapter();
         BeanUtil.copyProperties(chapterPublishReqDTO, bookChapter);
@@ -220,6 +232,7 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
         int wordCount = computeContentLength(content);
         bookChapter.setWordCount(wordCount);
         bookChapter.setParagraphCount(countParagraphs(content));
+        //TODO 审核
         bookChapter.setStatus(ChapterStatusEnum.PUBLISHED.getCode());
         boolean save = this.save(bookChapter);
         if (!save) {
@@ -237,26 +250,32 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
             throw new BusinessException(ResultCode.OPERATION_FAILED);
         }
         cacheUtil.delete(String.format(RedisKeyConstants.CACHE_BOOK_CATALOG, bookId));
+        cacheUtil.delete(String.format(RedisKeyConstants.BOOK_INFO_PREFIX, bookId));
 
-        return BeanUtil.copyProperties(bookChapter, ChapterPublishRespDTO.class);
+        ChapterPublishRespDTO dto = new ChapterPublishRespDTO();
+        BeanUtil.copyProperties(bookChapter, dto);
+        dto.setPublishTime(LocalDateTime.now());
+        return dto;
 
 
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public ChapterUpdateRespDTO updateChapter(ChapterUpdateReqDTO chapterUpdateReqDTO, Long chapterId) {
         Long bookId = chapterUpdateReqDTO.getBookId();
         String chapterName = chapterUpdateReqDTO.getChapterName();
         String content = chapterUpdateReqDTO.getContent();
-
+        if (bookId == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID);
+        }
         Long userId = UserContextHolder.getUserId();
         Author author = authorMapper.selectOne(new LambdaQueryWrapper<Author>().eq(Author::getUserId, userId));
         if (author == null) {
             throw new BusinessException(ResultCode.NOT_AN_AUTHOR);
         }
         BookInfo bookInfo = bookInfoMapper.selectById(bookId);
-        if (bookInfo == null) {
+        if (bookInfo == null || !bookInfo.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
             throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
         }
         if (!Objects.equals(bookInfo.getAuthorId(), author.getId())) {
@@ -291,7 +310,11 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
                 throw new BusinessException(ResultCode.OPERATION_FAILED);
 
             }
-            ossTemplate.uploadChapterContent(String.format(OssTemplate.UPLOAD_CHAPTER, bookId, bookChapter.getChapterIndex()), content);
+            try {
+                ossTemplate.uploadChapterContent(String.format(OssTemplate.UPLOAD_CHAPTER, bookId, bookChapter.getChapterIndex()), content);
+            } catch (Exception e) {
+                throw new BusinessException(ResultCode.UPLOAD_CONTENT_FAILED);
+            }
         }
         if (StrUtil.isNotBlank(chapterName) && Objects.equals(bookInfo.getLatestChapterId(), chapterId)) {
             int update1 = bookInfoMapper.update(
@@ -306,7 +329,14 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
 
         }
         cacheUtil.delete(String.format(RedisKeyConstants.CACHE_BOOK_CATALOG, bookId));
-        return BeanUtil.copyProperties(bookChapter, ChapterUpdateRespDTO.class);
+        cacheUtil.delete(String.format(RedisKeyConstants.BOOK_INFO_PREFIX, bookId));
+        ChapterUpdateRespDTO dto = new ChapterUpdateRespDTO();
+        dto.setBookId(bookId);
+        dto.setChapterId(chapterId);
+        dto.setChapterIndex(bookChapter.getChapterIndex());
+        dto.setWordCount(newCount);
+        dto.setUpdateTime(LocalDateTime.now());
+        return dto;
 
     }
 
@@ -342,7 +372,7 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
                 int insert = userChapterUnlockMapper.insert(userChapterUnlock);
                 if (insert < 1) {
                     // 抛出异常会触发 transactionTemplate 自动回滚
-                    throw new BusinessException(ResultCode.SYSTEM_ERROR, "新增解锁记录失败");
+                    throw new BusinessException(ResultCode.OPERATION_FAILED, "新增解锁记录失败");
                 }
             });
         } catch (Exception e) {
@@ -369,37 +399,14 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
         refundDTO.setChangeType(AssetChangeTypeEnum.REFUND.getCode());
         refundDTO.setTitle(String.format("退还<< %s >>第 %d 章兑换积分", bookInfo.getBookName(), bookChapter.getChapterIndex()));
 
-        boolean isSuccess = false;
-        String failReason = "";
+        // 1. 显式接收远程调用结果
+        Result<Boolean> result = userFeignClient.updatePoints(refundDTO);
 
-        try {
-            // 1. 显式接收远程调用结果
-            Result<Boolean> result = userFeignClient.updatePoints(refundDTO);
-
-            // 2. 严谨校验：判空、状态码、返回的业务布尔值
-            if (result == null) {
-                failReason = "远程返回结果为 null";
-            } else if (result.getCode() != 200) {
-                failReason = "下游业务处理失败: " + result.getMessage() + " (code: " + result.getCode() + ")";
-            } else if (!Boolean.TRUE.equals(result.getData())) {
-                failReason = "积分增减操作返回 false";
-            } else {
-                // 真正成功
-                isSuccess = true;
-                log.info("积分退还补偿成功, userId: {}, chapterId: {}", userId, bookChapter.getId());
-            }
-        } catch (Exception ex) {
-            // 捕获网络超时、连接拒绝等真正的底层异常
-            failReason = "Feign 调用底层抛出异常: " + ex.getMessage();
-            log.error("调用用户服务退款异常", ex);
+        // 2. 严谨校验：判空、状态码、返回的业务布尔值
+        if (result == null || result.getCode() != 200 || result.getData() != true) {
+            log.error("【严重警告】退还积分失败，需人工介入！userId: {},chapterId: {}", userId, bookChapter.getId());
         }
 
-        // 3. 统一处理失败逻辑（无论是网络不通，还是下游业务返回失败）
-        if (!isSuccess) {
-            log.error("【严重警告】积分退还补偿失败，需人工介入！userId: {}, chapterId: {}, 原因: {}",
-                    userId, bookChapter.getId(), failReason);
-
-        }
     }
 
     private boolean isUnlockChapter(long userId, long chapterId) {

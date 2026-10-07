@@ -13,6 +13,9 @@ import com.kun.service.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collection;
+import java.util.List;
+
 @RestController("innerUserController")
 @RequestMapping("/inner/user")
 @RequiredArgsConstructor
@@ -29,6 +32,12 @@ public class UserController {
         UserDTO userDTO =new UserDTO();
         BeanUtil.copyProperties(user,userDTO);
         return Result.success(userDTO);
+    }
+    @GetMapping("/inner/user/list")
+    Result<List<UserDTO>> getUserByIds(@RequestParam("userIds") Collection<Long> userIds){
+        List<User> userList = userService.listByIds(userIds);
+        List<UserDTO> userDTOS = BeanUtil.copyToList(userList, UserDTO.class);
+        return Result.success(userDTOS);
     }
 
     /**

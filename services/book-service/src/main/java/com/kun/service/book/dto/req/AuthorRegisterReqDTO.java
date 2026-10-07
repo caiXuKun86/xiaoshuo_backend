@@ -17,10 +17,7 @@ public class AuthorRegisterReqDTO implements Serializable {
      */
     private String penName;
 
-    /**
-     * 作家头像 OSS 地址
-     */
-    private String avatar;
+
 
     /**
      * 作家简介/档案

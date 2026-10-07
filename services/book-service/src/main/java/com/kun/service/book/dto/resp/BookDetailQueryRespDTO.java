@@ -115,10 +115,7 @@ public class BookDetailQueryRespDTO implements Serializable {
          * 是否已加入书架
          */
         private Boolean isInBookshelf;
-        /**
-         * 用户个人评分 (1-10 分，未评分为 null)
-         */
-        private Integer userScore;
+
         /**
          * 读到的最后章节 ID (雪花算法使用 Long)
          */

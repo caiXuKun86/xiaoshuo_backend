@@ -26,14 +26,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
-* @author Lenovo
-* @description 针对表【read_history(用户阅读历史足迹表)】的数据库操作Service实现
-* @createDate 2026-09-30 20:32:27
-*/
+ * @author Lenovo
+ * @description 针对表【read_history(用户阅读历史足迹表)】的数据库操作Service实现
+ * @createDate 2026-09-30 20:32:27
+ */
 @Service
 @RequiredArgsConstructor
 public class ReadHistoryServiceImpl extends ServiceImpl<ReadHistoryMapper, ReadHistory>
-    implements ReadHistoryService{
+        implements ReadHistoryService {
 
     private final BookFeignClient bookFeignClient;
     private final ReadHistoryMapper readHistoryMapper;
@@ -42,7 +42,7 @@ public class ReadHistoryServiceImpl extends ServiceImpl<ReadHistoryMapper, ReadH
     public PageResult<ReadHistoryPageRespDTO> pageReadHistory(ReadHistoryPageReqDTO reqDTO) {
         Long userId = UserContextHolder.getUserId();
         LambdaQueryWrapper<ReadHistory> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(ReadHistory::getUserId,userId);
+        queryWrapper.eq(ReadHistory::getUserId, userId);
         // 5. 排序规则：若未传自定义排序，默认按更新时间倒序
         if (!StringUtils.hasText(reqDTO.getSortField())) {
             queryWrapper.orderByDesc(ReadHistory::getLastReadTime);
@@ -52,7 +52,7 @@ public class ReadHistoryServiceImpl extends ServiceImpl<ReadHistoryMapper, ReadH
         Page<ReadHistory> page = this.page(reqDTO.toPage(), queryWrapper);
         List<ReadHistory> records = page.getRecords();
         Set<Long> bookIds = records.stream().map(ReadHistory::getBookId).collect(Collectors.toSet());
-        if(CollUtil.isEmpty(bookIds)){
+        if (CollUtil.isEmpty(bookIds)) {
             return PageResult.empty();
         }
         Result<List<BookDTO>> result = bookFeignClient.getBookListById(bookIds);
@@ -62,8 +62,8 @@ public class ReadHistoryServiceImpl extends ServiceImpl<ReadHistoryMapper, ReadH
         List<BookDTO> bookDTOList = result.getData();
         Map<Long, BookDTO> bookMap = bookDTOList.stream().collect(Collectors.toMap(BookDTO::getId, b -> b));
 
-        return PageResult.of(page,r -> {
-            ReadHistoryPageRespDTO readHistoryPageRespDTO=new ReadHistoryPageRespDTO();
+        return PageResult.of(page, r -> {
+            ReadHistoryPageRespDTO readHistoryPageRespDTO = new ReadHistoryPageRespDTO();
             BookDTO bookDTO = bookMap.get(r.getBookId());
             readHistoryPageRespDTO.setId(r.getId());
             readHistoryPageRespDTO.setBookId(r.getBookId());
@@ -82,12 +82,18 @@ public class ReadHistoryServiceImpl extends ServiceImpl<ReadHistoryMapper, ReadH
 
     @Override
     public void clearReadHistory(List<Long> bookIds) {
-        if(CollUtil.isEmpty(bookIds)){
-            return;
-        }
         Long userId = UserContextHolder.getUserId();
-        int count = readHistoryMapper.deleteByBookIds(bookIds,userId);
-        if(count<1){
+
+        if (bookIds == null || CollUtil.isEmpty(bookIds)) {
+            boolean remove = this.remove(new LambdaQueryWrapper<ReadHistory>()
+                    .eq(ReadHistory::getUserId, userId)
+            );
+            if (!remove) {
+                throw new BusinessException(ResultCode.OPERATION_FAILED);
+            }
+        }
+        int count = readHistoryMapper.deleteByBookIds(bookIds, userId);
+        if (count < 1) {
             throw new BusinessException(ResultCode.OPERATION_FAILED);
         }
     }

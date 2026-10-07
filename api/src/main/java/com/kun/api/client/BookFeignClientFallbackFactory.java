@@ -27,7 +27,9 @@ public class BookFeignClientFallbackFactory implements FallbackFactory<BookFeign
 
             @Override
             public Result<List<BookDTO>> getBookListById(Collection<Long> ids) {
-                return null;
+                log.error("调用 service-book 失败，触发降级，原因: {}", cause.getMessage());
+                // 返回兜底的默认值或友好提示
+                return Result.fail(503, "用户服务不可用(降级响应)");
             }
 
             @Override

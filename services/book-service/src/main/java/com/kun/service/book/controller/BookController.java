@@ -32,8 +32,6 @@ public class BookController {
 
     }
 
-    //TODO 远程调用获取isInBookshelf userScore lastReadChapterId lastReadChapterName
-    //TODO 缓存
     @GetMapping("/detail/{id}")
     public Result<BookDetailQueryRespDTO> queryBookDetail(@PathVariable("id") Long id) {
         BookDetailQueryRespDTO bookDetailQueryRespDTO = bookInfoService.queryBookDetailById(id);

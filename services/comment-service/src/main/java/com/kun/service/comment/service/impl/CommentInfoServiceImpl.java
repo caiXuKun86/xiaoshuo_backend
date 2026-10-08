@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -28,7 +29,11 @@ import com.kun.service.comment.mq.event.CommentLikeUpdateEvent;
 import com.kun.service.comment.service.CommentInfoService;
 import com.kun.service.comment.service.CommentParagraphStatService;
 import lombok.RequiredArgsConstructor;
-import org.apache.rocketmq.spring.core.RocketMQTemplate;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.rocketmq.client.producer.DefaultMQProducer;
+import org.apache.rocketmq.client.producer.SendCallback;
+import org.apache.rocketmq.client.producer.SendResult;
+import org.apache.rocketmq.common.message.Message;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +50,7 @@ import java.util.stream.Collectors;
  * @description 针对表【comment_info(评论互动主表)】的数据库操作Service实现
  * @createDate 2026-10-02 19:42:59
  */
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class CommentInfoServiceImpl extends ServiceImpl<CommentInfoMapper, CommentInfo> implements CommentInfoService {
@@ -53,7 +59,7 @@ public class CommentInfoServiceImpl extends ServiceImpl<CommentInfoMapper, Comme
     private final BookFeignClient bookFeignClient;
     private final StringRedisTemplate stringRedisTemplate;
     private final CommentParagraphStatService commentParagraphStatService;
-    private final RocketMQTemplate rocketMQTemplate;
+    private final DefaultMQProducer defaultMQProducer;
     private final CommentLikeMapper commentLikeMapper;
 
     @Override
@@ -137,6 +143,9 @@ public class CommentInfoServiceImpl extends ServiceImpl<CommentInfoMapper, Comme
         }
 
         Result<UserDTO> result = userFeignClient.getUserById(userId);
+        if (result == null || result.getCode() != 200 || result.getData() == null) {
+            throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE, "用户信息查找失败");
+        }
         UserDTO userDTO = result.getData();
         CommentInfo commentInfo = new CommentInfo();
         BeanUtil.copyProperties(commentPublishReqDTO, commentInfo);
@@ -243,7 +252,7 @@ public class CommentInfoServiceImpl extends ServiceImpl<CommentInfoMapper, Comme
 
         Result<UserDTO> result = userFeignClient.getUserById(userId);
         if (result == null || result.getCode() != 200 || result.getData() == null) {
-            throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE);
+            throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE,"用户信息查找失败");
         }
         UserDTO userDTO = result.getData();
 
@@ -380,8 +389,23 @@ public class CommentInfoServiceImpl extends ServiceImpl<CommentInfoMapper, Comme
                     .build();
         }
 
-        CommentLikeUpdateEvent event = new CommentLikeUpdateEvent(userId, commentId, action, System.currentTimeMillis());
-        rocketMQTemplate.syncSendOrderly("comment-topic:tag-commentLike-update", event, String.valueOf(commentId));
+        CommentLikeUpdateEvent event = new CommentLikeUpdateEvent(null,userId, commentId, action, System.currentTimeMillis());
+        Message message=new Message("comment-topic","tag-commentLike-update", JSONUtil.toJsonStr(event).getBytes());
+        try {
+            defaultMQProducer.send(message, new SendCallback() {
+                @Override
+                public void onSuccess(SendResult sendResult) {
+
+                }
+
+                @Override
+                public void onException(Throwable e) {
+                    log.error("mq消息发送失败{}",e.getMessage());
+                }
+            });
+        } catch (Exception e) {
+            log.error("mq消息发送失败{}",e.getMessage());
+        }
         return commentLikeRespDTO;
     }
 
@@ -422,7 +446,7 @@ public class CommentInfoServiceImpl extends ServiceImpl<CommentInfoMapper, Comme
         }
         Result<BookDTO> bookResult = bookFeignClient.getBookById(bookId);
         if (bookResult == null || bookResult.getCode() != 200 || bookResult.getData() == null) {
-            throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
+            throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE,"图书查找失败");
         }
         BookDTO bookDTO = bookResult.getData();
         if (!bookDTO.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
@@ -431,7 +455,7 @@ public class CommentInfoServiceImpl extends ServiceImpl<CommentInfoMapper, Comme
         if (chapterId != 0) {
             Result<ChapterDTO> chapterResult = bookFeignClient.getChapterById(chapterId);
             if (chapterResult == null || chapterResult.getCode() != 200 || chapterResult.getData() == null) {
-                throw new BusinessException(ResultCode.CHAPTER_NOT_FOUND);
+                throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE,"章节查找失败");
             }
             ChapterDTO chapterDTO = chapterResult.getData();
             if (!chapterDTO.getStatus().equals(ChapterStatusEnum.PUBLISHED.getCode())) {

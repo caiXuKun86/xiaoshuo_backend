@@ -89,8 +89,8 @@ public class AuthorServiceImpl extends ServiceImpl<AuthorMapper, Author> impleme
             throw new BusinessException(ResultCode.PAN_NAME_ALREADY_EXISTED);
         }
 
-        Result<Boolean> booleanResult = userFeignClient.registerWriter(RegisterWriterDTO.builder().isWriter(1).build());
-        if (booleanResult == null || booleanResult.getCode() != 200 || !Boolean.TRUE.equals(booleanResult.getData())) {
+        Result<Boolean> booleanResult = userFeignClient.registerWriter(RegisterWriterDTO.builder().userId(userId).isWriter(1).build());
+        if (booleanResult == null || booleanResult.getCode() != 200 || Boolean.FALSE.equals(booleanResult.getData())) {
             throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE, "更新用户信息失败");
         }
         Result<UserDTO> userDTOResult = userFeignClient.getUserById(userId);

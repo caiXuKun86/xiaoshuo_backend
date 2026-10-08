@@ -1,10 +1,7 @@
 package com.kun.service.comment.service;
 
-import com.kun.service.comment.domain.CommentLike;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.kun.service.comment.mq.event.CommentLikeUpdateEvent;
-
-import java.util.List;
+import com.kun.service.comment.domain.CommentLike;
 
 /**
 * @author Lenovo
@@ -13,5 +10,4 @@ import java.util.List;
 */
 public interface CommentLikeService extends IService<CommentLike> {
 
-    void processBatch(List<CommentLikeUpdateEvent> events);
 }

@@ -8,6 +8,9 @@ spring:
     nacos:
       discovery:
         server-addr: 127.0.0.1:8848
+    openfeign:
+      circuitbreaker:
+        enabled: true
 
   # ========================================================
   # 1. MySQL 数据源配置 (内置 HikariCP 连接池)
@@ -78,3 +81,22 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
+
+
+oss:
+  region: cn-beijing
+  endpoint: oss-cn-beijing.aliyuncs.com
+  bucketName: xiao-shuo-han
+  domain: https://xiao-shuo-han.oss-cn-beijing.aliyuncs.com # 自定义域名或访问域名
+
+
+feign:
+  httpclient:
+    hc5:
+      enabled: true
+  client:
+    config:
+      default:
+        connectTimeout: 2000 # 连接超时 2s
+        readTimeout: 5000    # 读取超时 5s
+        loggerLevel: BASIC

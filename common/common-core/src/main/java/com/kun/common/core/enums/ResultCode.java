@@ -13,11 +13,11 @@ public enum ResultCode implements IResultCode {
     // ==================== 200 全局成功 ====================
     SUCCESS(200, "操作成功"),
     //服务不可用
-    UNAVAILABLE_SERVICE(503,"服务不可用"),
     OPERATION_FAILED(500,"操作失败"),
 
 
     // ==================== 10000 ~ 10099 基础与网关层 ====================
+    UNAVAILABLE_SERVICE(10000,"服务不可用"),
     PARAM_INVALID(10001, "请求参数格式错误或必填项为空"),
     REQUEST_RATE_LIMIT(10002, "操作过于频繁，请稍后再试"),
     IP_BLOCKED(10003, "访问异常，当前 IP 已被临时限制"),
@@ -57,6 +57,7 @@ public enum ResultCode implements IResultCode {
     AUTHOR_NOT_PERMITTED(30013, "无权修改或操作他人作品与章节"),
     UPLOAD_CONTENT_FAILED(30014, "内容上传失败,请重试"),
     ALREADY_PUBLISH_INDEX(30015, "您已发送过本章节"),
+    BOOK_IS_OVER(30016, "已完结,不支持发布新章节"),
 
     // ==================== 40000 ~ 49999 进度与书架服务 (Shelf) ====================
     SHELF_ALREADY_EXISTS(40001, "该书已存在于您的书架中"),
@@ -82,7 +83,7 @@ public enum ResultCode implements IResultCode {
 
     // ==================== 70000 ~ 79999 搜索与榜单服务 (Search) ====================
     SEARCH_KEYWORD_BLANK(70001, "搜索关键词不能为空"),
-    SEARCH_ES_CLUSTER_ERROR(70002, "搜索服务繁忙，已为您切换简易检索"),
+    RANK_TYPE_NOT_FOUND(70002, "榜单类型不存在"),
 
     // ==================== 99999 系统兜底异常 ====================
     SYSTEM_ERROR(99999, "系统未知异常，请稍后重试");

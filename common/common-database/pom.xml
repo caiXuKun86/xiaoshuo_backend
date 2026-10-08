@@ -16,7 +16,6 @@
         <dependency>
             <groupId>com.kun</groupId>
             <artifactId>common-core</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
         <!-- MyBatis-Plus Spring Boot 3 Starter -->

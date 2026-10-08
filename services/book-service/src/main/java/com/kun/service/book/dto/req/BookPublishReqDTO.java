@@ -45,7 +45,7 @@ public class BookPublishReqDTO implements Serializable {
 
 
     /**
-     * 运营状态 (0:草稿 1:上架 2:下架封禁)
+     * 运营状态 (1:上架 2:下架封禁)
      */
     private Integer status;
 

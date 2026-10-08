@@ -117,7 +117,14 @@ public final class RedisKeyConstants {
     public static final String SEARCH_HOT_WORDS_ZSET = "search:hot_words";
 
     /**
-     * 小说多维排行通用前缀 ZSet: search:rank:{rankType} (如 monthly, ticket, new)
+     * 新书榜榜单 ZSet: search:rank:1
      */
-    public static final String SEARCH_RANK_ZSET_PREFIX = "search:rank:";
+    public static final String RANK_NEW_BOOKS = "search:rank:1";
+    /**
+     * 完本榜榜单 ZSet: search:rank:2
+     */
+    public static final String RANK_COMPLETED = "search:rank:2";
+
+
+
 }

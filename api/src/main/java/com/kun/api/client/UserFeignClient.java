@@ -1,6 +1,6 @@
 package com.kun.api.client;
 
-import com.kun.api.config.FeignConfig;
+import com.kun.api.client.fallback.UserFeignClientFallbackFactory;
 import com.kun.api.dto.user.RegisterWriterDTO;
 import com.kun.api.dto.user.UserDTO;
 import com.kun.api.dto.user.UserPointsUpdateDTO;
@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * 用户与资产服务内部 Feign 声明接口
  */
-@FeignClient(value = "user-service", contextId = "userFeignClient", configuration = FeignConfig.class)
+@FeignClient(value = "user-service", contextId = "userFeignClient",fallbackFactory = UserFeignClientFallbackFactory.class)
 public interface UserFeignClient {
 
     /**
@@ -22,6 +22,7 @@ public interface UserFeignClient {
      */
     @GetMapping("/inner/user/{userId}")
     Result<UserDTO> getUserById(@PathVariable("userId") Long userId);
+
     @GetMapping("/inner/user/list")
     Result<List<UserDTO>> getUserByIds(@RequestParam("userIds") Collection<Long> userIds);
 

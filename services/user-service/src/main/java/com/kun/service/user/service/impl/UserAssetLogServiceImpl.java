@@ -96,7 +96,7 @@ public class UserAssetLogServiceImpl extends ServiceImpl<UserAssetLogMapper, Use
                             .set(User::getPointBalance, newPointBalance)
                             .eq(User::getId, userId));
             if (update < 1) {
-                throw new BusinessException(ResultCode.SYSTEM_ERROR, "更新用户积分余额失败");
+                throw new BusinessException(ResultCode.OPERATION_FAILED, "更新用户积分余额失败");
             }
 
             // 5. 记录资产变动明细流水
@@ -110,7 +110,7 @@ public class UserAssetLogServiceImpl extends ServiceImpl<UserAssetLogMapper, Use
 
             boolean save = this.save(userAssetLog);
             if (!save) {
-                throw new BusinessException(ResultCode.SYSTEM_ERROR, "记录签到流水失败");
+                throw new BusinessException(ResultCode.OPERATION_FAILED, "记录签到流水失败");
             }
 
             return new UserCheckinRespDTO(pointsAwarded, newPointBalance);
@@ -125,7 +125,7 @@ public class UserAssetLogServiceImpl extends ServiceImpl<UserAssetLogMapper, Use
             if (e instanceof BusinessException) {
                 throw (BusinessException) e;
             }
-            throw new BusinessException(ResultCode.SYSTEM_ERROR, "签到失败，请稍后重试");
+            throw new BusinessException(ResultCode.OPERATION_FAILED, "签到失败，请稍后重试");
         }
     }
 
@@ -148,7 +148,7 @@ public class UserAssetLogServiceImpl extends ServiceImpl<UserAssetLogMapper, Use
                         .valueAt(0)
         );
         if (result == null || result.isEmpty() || result.get(0) == null) {
-            throw new BusinessException(ResultCode.SYSTEM_ERROR, "签到信息查询失败");
+            throw new BusinessException(ResultCode.OPERATION_FAILED, "签到信息查询失败");
         }
         int continuousCheckinDays = 0;
         long num = result.get(0);

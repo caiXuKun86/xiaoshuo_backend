@@ -1,5 +1,6 @@
 package com.kun.service.comment.service.impl;
 
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kun.api.client.BookFeignClient;
 import com.kun.api.dto.book.BookDTO;
@@ -16,14 +17,17 @@ import com.kun.service.comment.mapper.BookRatingMapper;
 import com.kun.service.comment.mq.event.BookRatingUpdateEvent;
 import com.kun.service.comment.service.BookRatingService;
 import lombok.RequiredArgsConstructor;
-import org.apache.rocketmq.spring.core.RocketMQTemplate;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.rocketmq.client.producer.DefaultMQProducer;
+import org.apache.rocketmq.client.producer.SendCallback;
+import org.apache.rocketmq.client.producer.SendResult;
+import org.apache.rocketmq.common.message.Message;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -35,9 +39,10 @@ import java.util.stream.Collectors;
  */
 @RequiredArgsConstructor
 @Service
+@Slf4j
 public class BookRatingServiceImpl extends ServiceImpl<BookRatingMapper, BookRating> implements BookRatingService {
 
-    private final RocketMQTemplate rocketMQTemplate;
+    private final DefaultMQProducer defaultMQProducer;
     private final BookFeignClient bookFeignClient;
     private final RedissonClient redissonClient;
 
@@ -51,7 +56,7 @@ public class BookRatingServiceImpl extends ServiceImpl<BookRatingMapper, BookRat
         }
         Result<BookDTO> result = bookFeignClient.getBookById(bookId);
         if (result == null || result.getCode() != 200 || result.getData() == null) {
-            throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE);
+            throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE, "图书查找失败");
         }
         BookDTO bookDTO = result.getData();
         RLock lock = redissonClient.getLock(String.format(RedisKeyConstants.LOCK_COMMENT_RATING, userId, bookId));
@@ -75,9 +80,24 @@ public class BookRatingServiceImpl extends ServiceImpl<BookRatingMapper, BookRat
             newRating.setUserId(userId);
             this.save(newRating);
 
-            BookRatingUpdateEvent event = new BookRatingUpdateEvent(bookId, score, LocalDateTime.now());
+            BookRatingUpdateEvent event = new BookRatingUpdateEvent(bookId, userId, score, System.currentTimeMillis());
 
-            rocketMQTemplate.syncSend("comment-topic:tag-bookRating-update", event);
+            Message message = new Message("comment-topic", "tag-bookRating-update", JSONUtil.toJsonStr(event).getBytes());
+            try {
+                defaultMQProducer.send(message, new SendCallback() {
+                    @Override
+                    public void onSuccess(SendResult sendResult) {
+
+                    }
+
+                    @Override
+                    public void onException(Throwable e) {
+                        log.error("mq消费发送失败,{}", e.getMessage());
+                    }
+                });
+            } catch (Exception e) {
+                log.error("mq消费发送失败,{}", e.getMessage());
+            }
             Integer ratingCount = bookDTO.getRatingCount();
             Integer totalScore = bookDTO.getTotalScore();
             latestScore = BigDecimal.valueOf(totalScore + score)
@@ -103,7 +123,7 @@ public class BookRatingServiceImpl extends ServiceImpl<BookRatingMapper, BookRat
         Map<Integer, List<BookRating>> collect = ratingList.stream().collect(Collectors.groupingBy(BookRating::getScore));
         Result<BookDTO> result = bookFeignClient.getBookById(bookId);
         if (result == null || result.getCode() != 200 || result.getData() == null) {
-            throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
+            throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE, "图书查找失败");
         }
         BookDTO bookDTO = result.getData();
         BookRatingDetailRespDTO respDTO = new BookRatingDetailRespDTO();

@@ -66,12 +66,12 @@ gateway:
       - /api/v1/book/categories
       - /api/v1/book/filter
       - /api/v1/book/detail/**
-      - /api/v1/book/author/profile/**
+      - /api/v1/book/author/{authorId}
       - /api/v1/book/**/catalog
       - /api/v1/book/chapter/**/content
       - /api/v1/comment/rating/{bookId}
-      - /api/v1/pay/notify/**
       - /api/v1/comment/list
       - /api/v1/comment/{rootId}/replies
-      - /api/v1/comment/paragraph/bubbles/**
+      - /api/v1/comment/paragraph/bubbles/{chapterId}
       - /api/v1/comment/paragraph/list
+      - /api/v1/pay/notify/**

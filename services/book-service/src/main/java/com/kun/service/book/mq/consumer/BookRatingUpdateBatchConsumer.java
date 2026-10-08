@@ -1,9 +1,10 @@
-package com.kun.service.comment.mq.consumer;
+package com.kun.service.book.mq.consumer;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.json.JSONUtil;
-import com.kun.service.comment.mapper.CommentLikeMapper;
-import com.kun.service.comment.mq.event.CommentLikeUpdateEvent;
+import com.kun.service.book.domain.BookInfo;
+import com.kun.service.book.mq.event.BookRatingUpdateEvent;
+import com.kun.service.book.service.BookInfoService;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -19,26 +20,25 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class CommentLikesUpdateBatchConsumer implements MessageListenerConcurrently, InitializingBean, DisposableBean {
+public class BookRatingUpdateBatchConsumer implements MessageListenerConcurrently, InitializingBean, DisposableBean {
 
     @Value("${rocketmq.namesrv-addr:127.0.0.1:9876}")
     private String namesrvAddr;
 
     // 当前消费者专属配置
-    private static final String CONSUMER_GROUP = "comment-commentLike-update-consumer-group";
+    private static final String CONSUMER_GROUP = "comment-bookRating-update-consumer-group";
     private static final String TOPIC = "comment-topic";
-    private static final String TAG = "tag-commentLike-update";
+    private static final String TAG = "tag-bookRating-update";
 
     private DefaultMQPushConsumer consumer;
+    private final BookInfoService bookInfoService;
     private final TransactionTemplate transactionTemplate;
-    private final CommentLikeMapper commentLikeMapper;
-
 
     // 1. Spring 依赖注入完成后自动执行启动逻辑
     @Override
@@ -70,54 +70,59 @@ public class CommentLikesUpdateBatchConsumer implements MessageListenerConcurren
             return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
         }
 
+        // 1. 针对 (userId + bookId) 进行折叠，只保留最新时间的事件
         try {
-            // 1. 批次内写折叠去重 (userId + commentId)，保留 eventTime 最新的事件
-            Map<String, CommentLikeUpdateEvent> latestEventMap = new HashMap<>();
-
-            for (MessageExt messageExt : records) {
-                String body = new String(messageExt.getBody());
-                CommentLikeUpdateEvent event = JSONUtil.toBean(body, CommentLikeUpdateEvent.class);
-                String key = event.getUserId() + "_" + event.getCommentId();
-                latestEventMap.merge(key, event, (oldVal, newVal) -> {
+            // 步骤 1：去重/写折叠（同一个用户对同一本书多次评分，只保留时间最新的）
+            Map<String, BookRatingUpdateEvent> latestUserBookEventMap = new HashMap<>();
+            for (MessageExt msg : records) {
+                String body = new String(msg.getBody(), StandardCharsets.UTF_8);
+                BookRatingUpdateEvent event = JSONUtil.toBean(body, BookRatingUpdateEvent.class);
+                if (event == null || event.getBookId() == null || event.getUpdateScore() == null) {
+                    continue;
+                }
+                String uniqueKey = event.getUserId() + ":" + event.getBookId();
+                latestUserBookEventMap.merge(uniqueKey, event, (oldVal, newVal) -> {
                     long oldTime = oldVal.getEventTime() != null ? oldVal.getEventTime() : 0L;
                     long newTime = newVal.getEventTime() != null ? newVal.getEventTime() : 0L;
                     return newTime >= oldTime ? newVal : oldVal;
                 });
             }
-            // 2. 必须基于去重后的数据进行增量计算！（修复隐患 1）
-            Map<Long, Integer> commentDeltaMap = new HashMap<>();
-            for (CommentLikeUpdateEvent event : latestEventMap.values()) {
-                int delta = (event.getStatus() != null && event.getStatus() == 1) ? 1 : -1;
-                commentDeltaMap.merge(event.getCommentId(), delta, Integer::sum);
-            }
-            // 3. 【防死锁核心】对明细列表按 (commentId, userId) 严格排序（修复隐患 4）
-            List<CommentLikeUpdateEvent> deduplicatedEvents = new ArrayList<>(latestEventMap.values());
-            deduplicatedEvents.sort(Comparator.comparing(CommentLikeUpdateEvent::getCommentId)
-                    .thenComparing(CommentLikeUpdateEvent::getUserId));
-            // 4. 【防死锁核心】过滤并按照 commentId 排序后再批量累加计数（修复隐患 4）
-            Map<Long, Integer> validDeltaMap = commentDeltaMap.entrySet().stream()
-                    .filter(entry -> entry.getValue() != 0)
-                    .sorted(Map.Entry.comparingByKey()) // 按照 ID 升序排序
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            Map.Entry::getValue,
-                            (e1, e2) -> e1,
-                            LinkedHashMap::new  // 保持排序顺序
-                    ));
-            transactionTemplate.executeWithoutResult(status->{
-                if (!deduplicatedEvents.isEmpty()) {
-                    commentLikeMapper.batchUpsert(deduplicatedEvents);
-                }
+            // 步骤 2：按 bookId 聚合增量（计算这批消息给每本书增加了多少分、多少人评）
+            List<BookRatingUpdateEvent> batchList = new ArrayList<>(latestUserBookEventMap.values());
 
-                if (!validDeltaMap.isEmpty()) {
-                    commentLikeMapper.batchUpdateLikeCount(validDeltaMap);
+            Map<Long, RatingDelta> bookDeltaMap = new HashMap<>();
+            for (BookRatingUpdateEvent event : batchList) {
+                bookDeltaMap.compute(event.getBookId(), (bookId, delta) -> {
+                    if (delta == null) {
+                        return new RatingDelta(event.getUpdateScore(), 1);
+                    }
+                    delta.addScore(event.getUpdateScore());
+                    delta.incrementCount();
+                    return delta;
+                });
+            }
+
+            if (bookDeltaMap.isEmpty()) {
+                return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
+            }
+            List<Long> sortedBookIds = new ArrayList<>(bookDeltaMap.keySet());
+            Collections.sort(sortedBookIds);
+            // 步骤 3：数据库原子批量增量更新（规避并发覆盖更新问题）
+            transactionTemplate.executeWithoutResult(status->{
+                for (Long bookId  : sortedBookIds) {
+                    RatingDelta delta = bookDeltaMap.get(bookId);
+                    // 使用 MyBatis-Plus setSql 语法，让 MySQL 原子累加并重新计算平均分
+                    // score = ROUND(total_score / rating_count, 1)
+                    bookInfoService.lambdaUpdate()
+                            .eq(BookInfo::getId, bookId)
+                            .setSql("total_score = IFNULL(total_score, 0) + " + delta.getTotalScoreDelta())
+                            .setSql("rating_count = IFNULL(rating_count, 0) + " + delta.getRatingCountDelta())
+                            .setSql("score = ROUND((IFNULL(total_score, 0) + " + delta.getTotalScoreDelta() + ") / (IFNULL(rating_count, 0) + " + delta.getRatingCountDelta() + "), 1)")
+                            .update();
                 }
+                log.info("MQ批量落盘成功，原始消息数: {}, 折叠后落盘数: {}", records.size(), batchList.size());
 
             });
-
-
-
-            log.info("MQ批量落盘成功，原始消息数: {}, 折叠后落盘数: {}", records.size(), deduplicatedEvents.size());
 
             return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
         } catch (Throwable t) {
@@ -141,11 +146,9 @@ public class CommentLikesUpdateBatchConsumer implements MessageListenerConcurren
     private static class RatingDelta {
         private Integer totalScoreDelta;
         private Integer ratingCountDelta;
-
         public void addScore(int score) {
             this.totalScoreDelta += score;
         }
-
         public void incrementCount() {
             this.ratingCountDelta += 1;
         }

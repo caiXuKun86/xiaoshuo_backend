@@ -13,6 +13,7 @@ import com.kun.common.core.enums.ResultCode;
 import com.kun.common.core.enums.UserGenderEnum;
 import com.kun.common.core.exception.BusinessException;
 import com.kun.common.core.utils.JwtUtils;
+import com.kun.common.oss.constants.OSSConstants;
 import com.kun.common.redis.constant.RedisKeyConstants;
 import com.kun.service.user.domain.User;
 import com.kun.service.user.domain.UserAssetLog;
@@ -84,6 +85,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         Integer gender = userRegisterReqDTO.getGender();
         user.setGender(gender != null && UserGenderEnum.getByCode(gender) != null ? gender : UserGenderEnum.UNKNOWN.getCode());
         user.setNickName(StrUtil.isNotBlank(nickName) ? nickName : String.format("书友_%s", RandomUtil.randomNumbers(6)));
+        user.setAvatar(OSSConstants.DEFAULT_AVATAR_URL);
         user.setRole("user");
 
         boolean save = this.save(user);
@@ -245,7 +247,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .eq(User::getId, userId)
                 .update();
         if (!update) {
-            throw new BusinessException(ResultCode.SYSTEM_ERROR, "修改失败");
+            throw new BusinessException(ResultCode.OPERATION_FAILED, "修改失败");
         }
 
         // 1. 删掉当前用户的访问令牌
@@ -311,7 +313,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .eq(User::getId, userId)
                 .update();
         if (!update) {
-            throw new BusinessException(ResultCode.SYSTEM_ERROR);
+            throw new BusinessException(ResultCode.OPERATION_FAILED);
         }
 
         UserAssetLog userAssetLog = new UserAssetLog();
@@ -319,7 +321,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         int insert = userAssetLogMapper.insert(userAssetLog);
         if (insert < 1) {
-            throw new BusinessException(ResultCode.SYSTEM_ERROR);
+            throw new BusinessException(ResultCode.OPERATION_FAILED);
         }
 
     }

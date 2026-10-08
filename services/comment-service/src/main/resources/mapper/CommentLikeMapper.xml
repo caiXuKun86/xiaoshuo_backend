@@ -6,15 +6,29 @@
 
     <!-- CommentLikeMapper.xml -->
     <insert id="batchUpsert">
-        INSERT INTO comment_like (user_id, comment_id, status, update_time)
+        INSERT INTO comment_like (
+        id,
+        user_id,
+        comment_id,
+        status,
+        create_time,
+        update_time
+        )
         VALUES
         <foreach collection="list" item="item" separator=",">
-            (#{item.userId}, #{item.commentId}, #{item.status}, NOW())
+            (
+            #{item.id},
+            #{item.userId},
+            #{item.commentId},
+            #{item.status},
+            FROM_UNIXTIME(#{item.eventTime} / 1000),
+            FROM_UNIXTIME(#{item.eventTime} / 1000)
+            )
         </foreach>
         ON DUPLICATE KEY UPDATE
-        -- 只有新事件时间大于已有记录时间时才更新，防止乱序
-        status = VALUES(status),
-        update_time = VALUES(update_time)
+        -- 核心：只有新事件的时间戳 >= 已有记录的 update_time 时，才更新状态和时间
+        status = IF(VALUES(update_time) >= update_time, VALUES(status), status),
+        update_time = IF(VALUES(update_time) >= update_time, VALUES(update_time), update_time)
     </insert>
 
     <!-- CommentMapper.xml -->

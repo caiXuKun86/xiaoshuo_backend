@@ -1,5 +1,6 @@
-package com.kun.api.client;
+package com.kun.api.client.fallback;
 
+import com.kun.api.client.UserFeignClient;
 import com.kun.api.dto.user.RegisterWriterDTO;
 import com.kun.api.dto.user.UserDTO;
 import com.kun.api.dto.user.UserPointsUpdateDTO;

@@ -15,6 +15,7 @@ public class CommentLikeUpdateEvent implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
+    private Long Id;
 
     /**
      * 用户Id

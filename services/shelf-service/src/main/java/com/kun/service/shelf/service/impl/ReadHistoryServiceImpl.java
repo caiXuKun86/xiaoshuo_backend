@@ -56,8 +56,8 @@ public class ReadHistoryServiceImpl extends ServiceImpl<ReadHistoryMapper, ReadH
             return PageResult.empty();
         }
         Result<List<BookDTO>> result = bookFeignClient.getBookListById(bookIds);
-        if (result == null || result.getCode() != 200) {
-            throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE);
+        if (result == null || result.getCode() != 200 || result.getData() == null) {
+            throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE, "图书查找失败");
         }
         List<BookDTO> bookDTOList = result.getData();
         Map<Long, BookDTO> bookMap = bookDTOList.stream().collect(Collectors.toMap(BookDTO::getId, b -> b));

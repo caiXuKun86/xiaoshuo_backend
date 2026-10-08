@@ -1,6 +1,6 @@
 package com.kun.api.client;
 
-import com.kun.api.config.FeignConfig;
+import com.kun.api.client.fallback.BookFeignClientFallbackFactory;
 import com.kun.api.dto.book.BookDTO;
 import com.kun.api.dto.book.ChapterDTO;
 import com.kun.common.core.result.Result;
@@ -15,7 +15,7 @@ import java.util.List;
 /**
  * 图书与内容服务内部 Feign 声明接口
  */
-@FeignClient(value = "book-service", contextId = "bookFeignClient", configuration = FeignConfig.class)
+@FeignClient(value = "book-service", contextId = "bookFeignClient",fallbackFactory= BookFeignClientFallbackFactory.class)
 public interface BookFeignClient {
 
     /**
@@ -24,6 +24,11 @@ public interface BookFeignClient {
     @GetMapping("/inner/book/{bookId}")
     Result<BookDTO> getBookById(@PathVariable("bookId") Long bookId);
 
+    /**
+     * 根据小说 IDs 查询图书基础信息列表 (书架、评论、订单等校验图书真实性)
+     * @param ids
+     * @return
+     */
     @GetMapping("/inner/book/list")
     Result<List<BookDTO>> getBookListById(@RequestParam("ids") Collection<Long> ids);
 

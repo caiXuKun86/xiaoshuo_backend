@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-public class BookPageReqDTO extends com.kun.common.database.page.PageRequest {
+public class BookFilterPageReqDTO extends com.kun.common.database.page.PageRequest {
 
     /**
      * 频道筛选
@@ -24,10 +24,7 @@ public class BookPageReqDTO extends com.kun.common.database.page.PageRequest {
      */
     private Integer bookStatus;
 
-    /**
-     * 字数区间
-     */
-    private Integer wordRange;
+
 
 
 }

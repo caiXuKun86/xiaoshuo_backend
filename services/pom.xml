@@ -16,6 +16,7 @@
         <module>book-service</module>
         <module>user-service</module>
         <module>comment-service</module>
+        <module>shelf-service</module>
     </modules>
 
     <properties>

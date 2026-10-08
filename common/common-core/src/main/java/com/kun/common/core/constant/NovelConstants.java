@@ -36,5 +36,4 @@ public interface NovelConstants {
      */
     String DATE_FORMAT = "yyyy-MM-dd";
 
-    String DEFAULT_COVER_URL="https://xiao-shuo-han.oss-cn-beijing.aliyuncs.com/cover/default_cover.jpg";
 }

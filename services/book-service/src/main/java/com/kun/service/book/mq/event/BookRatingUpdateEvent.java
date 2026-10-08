@@ -6,7 +6,6 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
@@ -23,13 +22,18 @@ public class BookRatingUpdateEvent implements Serializable {
     private Long bookId;
 
     /**
+     * 用户Id
+     */
+    private Long userId;
+
+    /**
      * 分数
      */
     private Integer updateScore;
     /**
      * 时间
      */
-    private LocalDateTime time;
+    private Long eventTime;
 
 
 }

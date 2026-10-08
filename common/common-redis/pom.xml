@@ -16,7 +16,6 @@
         <dependency>
             <groupId>com.kun</groupId>
             <artifactId>common-core</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
         <!-- Spring Boot Data Redis -->

@@ -34,5 +34,5 @@ public interface BookshelfService extends IService<Bookshelf> {
 
     void mergeShelf(BookShelfMergeReqDTO bookShelfMergeReqDTO);
 
-    ShelfDTO getShelfByBookId(Long bookId);
+    ShelfDTO getShelfByBookId(Long bookId,Long userId);
 }

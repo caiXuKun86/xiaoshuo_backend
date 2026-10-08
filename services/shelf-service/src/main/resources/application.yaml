@@ -8,6 +8,9 @@ spring:
     nacos:
       discovery:
         server-addr: 127.0.0.1:8848
+    openfeign:
+      circuitbreaker:
+        enabled: true
 
   # ========================================================
   # 1. MySQL 数据源配置 (内置 HikariCP 连接池)
@@ -81,18 +84,20 @@ knife4j:
 
 
 rocketmq:
-  # NameServer 地址（Docker 映射到本机的 9876 端口）
-  name-server: 127.0.0.1:9876
+  namesrv-addr: 127.0.0.1:9876
   producer:
-    # 生产者所属组名
-    group: shelf-producer-group
-    # 发送超时时间（毫秒）
-    send-message-timeout: 3000
-    # 消息发送失败重试次数
-    retry-times-when-send-failed: 2
-    # 关键：关闭 VIP 通道，避免刚才遇到的 10909 端口连接失败
-    send-message-with-vip-channel-enable: false
+    group: shelf_producer_group
+    send-timeout: 3000
+    retry-times: 2
 
 
-
-
+feign:
+  httpclient:
+    hc5:
+      enabled: true
+  client:
+    config:
+      default:
+        connectTimeout: 2000 # 连接超时 2s
+        readTimeout: 5000    # 读取超时 5s
+        loggerLevel: BASIC

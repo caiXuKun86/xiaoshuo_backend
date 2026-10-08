@@ -8,6 +8,10 @@ spring:
     nacos:
       discovery:
         server-addr: 127.0.0.1:8848
+    openfeign:
+      circuitbreaker:
+        enabled: true
+
 
   # ========================================================
   # 1. MySQL 数据源配置 (内置 HikariCP 连接池)
@@ -99,3 +103,14 @@ rocketmq:
     retry-times-when-send-failed: 2
     # 关键：关闭 VIP 通道，避免刚才遇到的 10909 端口连接失败
     send-message-with-vip-channel-enable: false
+
+feign:
+  httpclient:
+    hc5:
+      enabled: true
+  client:
+    config:
+      default:
+        connectTimeout: 2000 # 连接超时 2s
+        readTimeout: 5000    # 读取超时 5s
+        loggerLevel: BASIC

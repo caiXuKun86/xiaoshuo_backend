@@ -15,19 +15,20 @@ import com.kun.common.core.enums.*;
 import com.kun.common.core.exception.BusinessException;
 import com.kun.common.core.result.Result;
 import com.kun.common.database.page.PageResult;
+import com.kun.common.oss.constants.OSSConstants;
 import com.kun.common.redis.constant.RedisKeyConstants;
 import com.kun.common.redis.util.CacheUtil;
 import com.kun.service.book.domain.*;
-import com.kun.service.book.dto.req.BookPageReqDTO;
+import com.kun.service.book.dto.req.BookFilterPageReqDTO;
 import com.kun.service.book.dto.req.BookPublishReqDTO;
-import com.kun.service.book.dto.resp.BookCatalogQueryRespDTO;
-import com.kun.service.book.dto.resp.BookDetailQueryRespDTO;
-import com.kun.service.book.dto.resp.BookPageRespDTO;
-import com.kun.service.book.dto.resp.BookPublishRespDTO;
+import com.kun.service.book.dto.req.BookRankPageReqDTO;
+import com.kun.service.book.dto.req.BookSearchPageReqDTO;
+import com.kun.service.book.dto.resp.*;
 import com.kun.service.book.mapper.*;
 import com.kun.service.book.service.BookInfoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -37,6 +38,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -48,7 +50,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Service
 public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> implements BookInfoService {
-
+    private final StringRedisTemplate stringRedisTemplate;
     private final BookChapterMapper bookChapterMapper;
 
     private final UserChapterUnlockMapper userChapterUnlockMapper;
@@ -60,14 +62,11 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
 
 
     @Override
-    public PageResult<BookPageRespDTO> pageBook(BookPageReqDTO reqDTO) {
+    public PageResult<BookPageRespDTO> pageBook(BookFilterPageReqDTO reqDTO) {
         Integer channelId = reqDTO.getChannelId();
         Long categoryId = reqDTO.getCategoryId();
         Integer bookStatus = reqDTO.getBookStatus();
-        Integer wordRange = reqDTO.getWordRange();
-
         LambdaQueryWrapper<BookInfo> queryWrapper = new LambdaQueryWrapper<>();
-
         // 1. 业务硬约束：只展示已上架的书籍 (status = 1)
         queryWrapper.eq(BookInfo::getStatus, 1);
 
@@ -84,19 +83,6 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
         if (bookStatus != null && bookStatus != -1) {
             queryWrapper.eq(BookInfo::getBookStatus, bookStatus);
         }
-
-        // 4. 字数区间筛选
-        if (wordRange != null && wordRange > 0) {
-            switch (wordRange) {
-                case 1 -> queryWrapper.le(BookInfo::getWordCount, 300_000);
-                case 2 -> queryWrapper.between(BookInfo::getWordCount, 300_000, 1_000_000);
-                case 3 -> queryWrapper.between(BookInfo::getWordCount, 1_000_001, 2_000_000);
-                case 4 -> queryWrapper.gt(BookInfo::getWordCount, 2_000_000);
-                default -> {
-                }
-            }
-        }
-
         // 5. 排序规则：若未传自定义排序，默认按更新时间倒序
         if (!StringUtils.hasText(reqDTO.getSortField())) {
             queryWrapper.orderByDesc(BookInfo::getLatestChapterTime);
@@ -132,7 +118,10 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
             bookDetailQueryRespDTO.setUserInteract(new BookDetailQueryRespDTO.UserInteract(false, null, null));
             return bookDetailQueryRespDTO;
         }
-        Result<ShelfDTO> result = shelfFeignClient.getShelfByBookId(id);
+        Result<ShelfDTO> result = shelfFeignClient.getShelfDTO(id,userId);
+        if (result == null || result.getCode() != 200 || result.getData() == null) {
+            throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE, "查找书架信息失败");
+        }
         ShelfDTO shelfDTO = result.getData();
         BookDetailQueryRespDTO.UserInteract userInteract = new BookDetailQueryRespDTO.UserInteract();
         userInteract.setIsInBookshelf(shelfDTO.getIsInBookshelf());
@@ -190,7 +179,6 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
 
     }
 
-    //TODO
     @Override
     public BookPublishRespDTO publishBook(BookPublishReqDTO bookPublishReqDTO) {
         String bookName = bookPublishReqDTO.getBookName();
@@ -198,15 +186,18 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
         Integer categoryId = bookPublishReqDTO.getCategoryId();
         List<String> tags = bookPublishReqDTO.getTags();
         Integer status = bookPublishReqDTO.getStatus();
-        if(ObjUtil.hasEmpty(channelId,categoryId,status)){
+        String coverUrl = bookPublishReqDTO.getCoverUrl();
+
+
+        if (ObjUtil.hasEmpty(channelId, categoryId, status)) {
             throw new BusinessException(ResultCode.PARAM_INVALID);
         }
-        if(StrUtil.isBlank(bookName)){
-            throw new BusinessException(ResultCode.PARAM_INVALID,"书名不能为空");
-
+        if (StrUtil.isBlank(bookName)) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "书名不能为空");
         }
-        if (BookOpStatusEnum.getEnumByCode(status) == null || BookOpStatusEnum.BANNED.getCode().equals(status)) {
 
+        if (coverUrl == null) {
+            coverUrl = OSSConstants.DEFAULT_COVER_URL;
         }
         Long userId = UserContextHolder.getUserId();
         Author author = authorMapper.selectOne(
@@ -249,6 +240,137 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
         BeanUtil.copyProperties(bookInfo, bookPublishRespDTO);
         bookPublishRespDTO.setTags(tags);
         return bookPublishRespDTO;
+    }
+
+    @Override
+    public void overBook(Long bookId) {
+        BookInfo bookInfo = this.getById(bookId);
+        if (bookInfo == null) {
+            throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
+        }
+        Long userId = UserContextHolder.getUserId();
+        Author author = authorMapper.selectOne(new LambdaQueryWrapper<Author>()
+                .eq(Author::getUserId, userId)
+        );
+        if (author == null) {
+            throw new BusinessException(ResultCode.NOT_AN_AUTHOR);
+        }
+        if (!Objects.equals(bookInfo.getAuthorId(), author.getId())) {
+            throw new BusinessException(ResultCode.AUTHOR_NOT_PERMITTED);
+        }
+        boolean update = this.lambdaUpdate()
+                .set(BookInfo::getStatus, BookStatusEnum.FINISHED)
+                .eq(BookInfo::getId, bookId)
+                .update();
+        if (!update) {
+            throw new BusinessException(ResultCode.OPERATION_FAILED);
+
+        }
+    }
+
+    @Override
+    public PageResult<BookPageRespDTO> searchBookPage(BookSearchPageReqDTO reqDTO) {
+        String keyword = reqDTO.getKeyword();
+        if (keyword.isBlank()) {
+            throw new BusinessException(ResultCode.SEARCH_KEYWORD_BLANK);
+        }
+        keyword = keyword.trim();
+        LambdaQueryWrapper<BookInfo> queryWrapper = new LambdaQueryWrapper<>();
+        // 1. 业务硬约束：只展示已上架的书籍 (status = 1)
+        queryWrapper.eq(BookInfo::getStatus, 1);
+        String finalKeyword = keyword;
+        queryWrapper.and(wq -> wq.like(BookInfo::getBookName, finalKeyword)
+                .or().like(BookInfo::getAuthorName, finalKeyword)
+                .or().like(BookInfo::getTags, finalKeyword));
+        // 5. 排序规则：若未传自定义排序，默认按更新时间倒序
+        if (!StringUtils.hasText(reqDTO.getSortField())) {
+            queryWrapper.orderByDesc(BookInfo::getLatestChapterTime);
+        }
+
+        // 6. 执行分页查询
+        Page<BookInfo> page = this.page(reqDTO.toPage(), queryWrapper);
+
+        return PageResult.of(page, bookInfo -> {
+            BookPageRespDTO dto = new BookPageRespDTO();
+            BeanUtils.copyProperties(bookInfo, dto);
+            if (StringUtils.hasText(bookInfo.getTags())) {
+                dto.setTags(List.of(bookInfo.getTags().split(",")));
+            } else {
+                dto.setTags(Collections.emptyList());
+            }
+            return dto;
+        });
+
+    }
+
+    @Override
+    public PageResult<BookRankPageRespDTO> rankBookPage(BookRankPageReqDTO bookSearchPageReqDTO) {
+
+        Integer rankType = bookSearchPageReqDTO.getRankType();
+        Integer pageNum = bookSearchPageReqDTO.getPageNum();
+        Integer pageSize = bookSearchPageReqDTO.getPageSize();
+        if (BookRankTypeEnum.getByCode(rankType) == null) {
+            throw new BusinessException(ResultCode.RANK_TYPE_NOT_FOUND);
+        }
+        String key;
+        if (BookRankTypeEnum.NEW_BOOK.getCode().equals(rankType)) {
+            key = RedisKeyConstants.RANK_NEW_BOOKS;
+        } else {
+            key = RedisKeyConstants.RANK_COMPLETED;
+        }
+        // 0-19 20-39
+        long start = (long) (pageNum - 1) * pageSize;
+        long stop = start + pageSize - 1;
+        Long total = stringRedisTemplate.opsForZSet().zCard(key);
+        total = Math.min(total, 100L);
+        Set<String> bookIds = stringRedisTemplate.opsForZSet().reverseRange(key, start, stop);
+        List<BookInfo> bookInfoList = this.listByIds(bookIds);
+
+        AtomicInteger currentRank = new AtomicInteger((pageNum - 1) * pageSize + 1);
+        List<BookRankPageRespDTO> dtoList = bookInfoList.stream()
+                .map(bookInfo -> {
+                    BookRankPageRespDTO dto = new BookRankPageRespDTO();
+                    BeanUtils.copyProperties(bookInfo, dto);
+                    dto.setRank(currentRank.getAndIncrement());
+                    return dto;
+                })
+                .toList();
+        return PageResult.of(dtoList, pageNum, pageSize, total);
+    }
+
+    @Override
+    public BookRankHomeSummaryRespDTO queryRankHomeSummary() {
+        String rankCompletedKey = RedisKeyConstants.RANK_COMPLETED;
+
+        Set<String> bookIds = stringRedisTemplate.opsForZSet().reverseRange(rankCompletedKey, 0, 4);
+        List<BookInfo> bookInfoList = this.listByIds(bookIds);
+
+        AtomicInteger currentRank = new AtomicInteger(1);
+        AtomicInteger finalCurrentRank1 = currentRank;
+        List<BookRankPageRespDTO> CompletedBookList = bookInfoList.stream()
+                .map(bookInfo -> {
+                    BookRankPageRespDTO dto = new BookRankPageRespDTO();
+                    BeanUtils.copyProperties(bookInfo, dto);
+                    dto.setRank(finalCurrentRank1.getAndIncrement());
+                    return dto;
+                })
+                .toList();
+
+        String newBookKey = RedisKeyConstants.RANK_NEW_BOOKS;
+
+        bookIds = stringRedisTemplate.opsForZSet().reverseRange(newBookKey, 0, 4);
+        bookInfoList = this.listByIds(bookIds);
+        currentRank = new AtomicInteger(1);
+        AtomicInteger finalCurrentRank = currentRank;
+        List<BookRankPageRespDTO> newBookList = bookInfoList.stream()
+                .map(bookInfo -> {
+                    BookRankPageRespDTO dto = new BookRankPageRespDTO();
+                    BeanUtils.copyProperties(bookInfo, dto);
+                    dto.setRank(finalCurrentRank.getAndIncrement());
+                    return dto;
+                })
+                .toList();
+        return new BookRankHomeSummaryRespDTO(newBookList, CompletedBookList);
     }
 }
 

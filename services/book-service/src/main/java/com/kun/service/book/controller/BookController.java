@@ -3,7 +3,7 @@ package com.kun.service.book.controller;
 import com.kun.common.core.result.Result;
 import com.kun.common.database.page.PageResult;
 import com.kun.common.oss.template.OssTemplate;
-import com.kun.service.book.dto.req.BookPageReqDTO;
+import com.kun.service.book.dto.req.BookFilterPageReqDTO;
 import com.kun.service.book.dto.req.BookPublishReqDTO;
 import com.kun.service.book.dto.resp.BookCatalogQueryRespDTO;
 import com.kun.service.book.dto.resp.BookDetailQueryRespDTO;
@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -26,10 +27,9 @@ public class BookController {
     private final OssTemplate ossTemplate;
 
     @GetMapping("/filter")
-    public Result<PageResult<BookPageRespDTO>> pageBook(BookPageReqDTO bookPageReqDTO) {
+    public Result<PageResult<BookPageRespDTO>> pageBook(BookFilterPageReqDTO bookPageReqDTO) {
         PageResult<BookPageRespDTO> pageResult = bookInfoService.pageBook(bookPageReqDTO);
         return Result.success(pageResult);
-
     }
 
     @GetMapping("/detail/{id}")
@@ -50,20 +50,42 @@ public class BookController {
         return Result.success(bookPublishRespDTO);
 
     }
-    @PostMapping("/cover")
+    @PostMapping("/over/{bookId}")
+    public Result<Void> overBook(@PathVariable("bookId") Long bookId){
+        bookInfoService.overBook(bookId);
+        return Result.success();
+
+    }
+
+    private static final long MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(".jpg", ".jpeg", ".png", ".webp");
+    private static final Set<String> ALLOWED_MIME_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
+
+    @PostMapping("/cover/upload")
     public Result<String> uploadCover(@RequestParam("file") MultipartFile file) throws IOException {
-        if (file.isEmpty()) {
+        if (file == null || file.isEmpty()) {
             return Result.fail("上传文件不能为空");
         }
-
-        // 1. 校验图片类型 (jpg, png, webp 等)
+        // 2. 校验文件大小 (不超过 2MB)
+        if (file.getSize() > MAX_FILE_SIZE) {
+            return Result.fail("封面图片大小不能超过 2MB");
+        }
+        // 3. 校验文件后缀名
         String originalFilename = file.getOriginalFilename();
-        String suffix = originalFilename != null && originalFilename.contains(".")
-                ? originalFilename.substring(originalFilename.lastIndexOf("."))
-                : ".jpg";
-        // 2. 规划 OSS 存储路径 (例如: cover/2026/09/uuid.jpg)
+        if (originalFilename == null || !originalFilename.contains(".")) {
+            return Result.fail("上传文件缺少后缀名");
+        }
+        String suffix = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+        if (!ALLOWED_EXTENSIONS.contains(suffix)) {
+            return Result.fail("仅支持 JPG、PNG、WEBP 格式的图片");
+        }
+        // 4. (推荐) 校验 MIME 类型，防止恶意修改文件后缀上传
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_MIME_TYPES.contains(contentType.toLowerCase())) {
+            return Result.fail("非法图片格式");
+        }
+        // 5. 规划 OSS 存储路径并上传
         String objectName = "cover/" + UUID.randomUUID().toString().replace("-", "") + suffix;
-        // 3. 上传并返回外链可访问的 URL
         String fileUrl = ossTemplate.uploadFile(objectName, file.getInputStream());
         return Result.success(fileUrl);
     }

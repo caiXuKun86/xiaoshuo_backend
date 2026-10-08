@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
@@ -53,7 +52,7 @@ public class ReadingProgressSyncEvent implements Serializable {
     /**
      * 同步时间
      */
-    private LocalDateTime syncTime;
+    private Long eventTime;
 
 
 }

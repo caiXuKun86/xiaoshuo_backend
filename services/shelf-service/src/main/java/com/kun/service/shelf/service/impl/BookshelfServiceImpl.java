@@ -36,7 +36,8 @@ import com.kun.service.shelf.mq.message.ReadingProgressSyncEvent;
 import com.kun.service.shelf.service.BookshelfService;
 import com.kun.service.shelf.service.ReadHistoryService;
 import lombok.RequiredArgsConstructor;
-import org.apache.rocketmq.spring.core.RocketMQTemplate;
+import org.apache.rocketmq.client.producer.DefaultMQProducer;
+import org.apache.rocketmq.common.message.Message;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -60,7 +61,7 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
 
     private final BookFeignClient bookFeignClient;
     private final BookshelfMapper bookshelfMapper;
-    private final RocketMQTemplate rocketMQTemplate;
+    private final DefaultMQProducer defaultMQProducer;
     private final StringRedisTemplate stringRedisTemplate;
     private final ReadHistoryMapper readHistoryMapper;
     private final ReadHistoryService readHistoryService;
@@ -82,8 +83,8 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
         List<Bookshelf> records = bookshelfPage.getRecords();
         List<Long> bookIds = records.stream().map(Bookshelf::getBookId).toList();
         Result<List<BookDTO>> result = bookFeignClient.getBookListById(bookIds);
-        if (result == null || result.getCode() != 200) {
-            throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE);
+        if (result == null || result.getCode() != 200 || result.getData() == null) {
+            throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE, "图书查找失败");
         }
         List<BookDTO> bookDTOList = result.getData();
         Map<Long, BookDTO> bookDTOMap = bookDTOList.stream().collect(Collectors.toMap(BookDTO::getId, bookDTO -> bookDTO));
@@ -93,10 +94,12 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
             BookShelfQueryRespDTO dto = new BookShelfQueryRespDTO();
             BeanUtils.copyProperties(bookshelf, dto);
             BookDTO bookDTO = bookDTOMap.get(bookshelf.getBookId());
-            dto.setAuthorName(bookDTO.getAuthorName());
-            dto.setLatestChapterId(bookDTO.getLatestChapterId());
-            dto.setLatestChapterName(bookDTO.getLatestChapterName());
-            dto.setLatestChapterTime(bookDTO.getLatestChapterTime());
+            if (bookDTO != null) {
+                dto.setAuthorName(bookDTO.getAuthorName());
+                dto.setLatestChapterId(bookDTO.getLatestChapterId());
+                dto.setLatestChapterName(bookDTO.getLatestChapterName());
+                dto.setLatestChapterTime(bookDTO.getLatestChapterTime());
+            }
 
             return dto;
         });
@@ -119,8 +122,11 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
             throw new BusinessException(ResultCode.PARAM_INVALID);
         }
         Result<BookDTO> result = bookFeignClient.getBookById(bookId);
+        if (result == null || result.getCode() != 200 || result.getData() == null) {
+            throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE, "图书查找失败");
+        }
         BookDTO bookDTO = result.getData();
-        if (bookDTO == null || !bookDTO.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
+        if (!bookDTO.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
             throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
         }
 
@@ -172,7 +178,7 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
                 .chapterName(reqDTO.getChapterName())
                 .paragraphIndex(reqDTO.getParagraphIndex())
                 .readPercent(reqDTO.getReadPercent())
-                .syncTime(LocalDateTime.now())
+                .eventTime(System.currentTimeMillis())
                 .build();
         // 2. 依然第一时间写入 Redis Hash (保证换设备/跨端查询能瞬间读到)
         String hashKey = String.format(RedisKeyConstants.SHELF_PROGRESS_PREFIX, userId);
@@ -180,8 +186,12 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
         stringRedisTemplate.expire(hashKey, 14L + RandomUtil.randomLong(1, 5), TimeUnit.DAYS);
         // 3. 异步发送到 MQ (单向发送/可靠发送，仅需 1~2ms)
         // 采用 (userId + ":" + bookId) 作为 hashKey/shardingKey，保证同一个用户的同一本书落到同一个分区，保持局部有序
-
-        rocketMQTemplate.sendOneWay("shelf-topic:tag-progress-sync", event);
+        Message message = new Message("shelf-topic", "tag-progress-sync", JSONUtil.toJsonStr(event).getBytes());
+        try {
+            defaultMQProducer.sendOneway(message);
+        } catch (Exception e) {
+            log.error("Mq消息发送失败{}");
+        }
         return new BookShelfSyncRespDTO(LocalDateTime.now());
     }
 
@@ -237,8 +247,8 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
 
             if (CollUtil.isNotEmpty(bookIdList)) {
                 Result<List<BookDTO>> result = bookFeignClient.getBookListById(bookIdList);
-                if (result == null || result.getCode() != 200 || result.getData()==null) {
-                    throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE);
+                if (result == null || result.getCode() != 200 || result.getData() == null) {
+                    throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE,"图书查找失败");
                 }
                 List<BookDTO> bookDTOList = result.getData();
                 Set<Long> existBookIds = bookDTOList.stream()
@@ -309,8 +319,8 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
             List<Long> historyBookIds = new ArrayList<>(latestLocalHistoryMap.keySet());
             if (CollUtil.isNotEmpty(historyBookIds)) {
                 Result<List<BookDTO>> result = bookFeignClient.getBookListById(historyBookIds);
-                if (result == null || result.getCode() != 200 || result.getData()==null) {
-                    throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE);
+                if (result == null || result.getCode() != 200 || result.getData() == null) {
+                    throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE,"图书查找失败");
                 }
                 List<BookDTO> bookDTOList = result.getData();
                 Set<Long> existBookIds = bookDTOList.stream()
@@ -319,7 +329,7 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
                         .collect(Collectors.toSet());
                 historyBookIds = historyBookIds.stream().filter(existBookIds::contains).collect(Collectors.toList());
 
-                if(CollUtil.isNotEmpty(historyBookIds)){
+                if (CollUtil.isNotEmpty(historyBookIds)) {
                     List<ReadHistory> dbHistoryList = readHistoryService.lambdaQuery()
                             .eq(ReadHistory::getUserId, userId)
                             .in(ReadHistory::getBookId, historyBookIds)
@@ -365,8 +375,7 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
     }
 
     @Override
-    public ShelfDTO getShelfByBookId(Long bookId) {
-        Long userId = UserContextHolder.getUserId();
+    public ShelfDTO getShelfByBookId(Long bookId,Long userId) {
         Bookshelf bookshelf = this.lambdaQuery()
                 .eq(Bookshelf::getBookId, bookId)
                 .eq(Bookshelf::getUserId, userId)

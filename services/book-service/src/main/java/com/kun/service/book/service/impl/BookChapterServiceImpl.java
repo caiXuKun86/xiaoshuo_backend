@@ -104,7 +104,7 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
                 return bookChapterQueryRespDTO;
             }
 
-            if (!isUnlockChapter(userId, chapterId)) {
+            if (!isUnlockChapter(bookInfo, userId, chapterId)) {
                 bookChapterQueryRespDTO.setIsLocked(true);
                 bookChapterQueryRespDTO.setNeedLogin(false);
                 bookChapterQueryRespDTO.setRequiredPoints(bookChapter.getRequiredPoints());
@@ -149,12 +149,12 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
             if (!b) {
                 throw new BusinessException(ResultCode.REQUEST_RATE_LIMIT);
             }
-            if (isUnlockChapter(userId, chapterId)) {
+            if (isUnlockChapter(bookInfo,userId, chapterId)) {
                 throw new BusinessException(ResultCode.CHAPTER_ALREADY_UNLOCKED);
             }
             Result<UserDTO> result = userFeignClient.getUserById(userId);
             if (result == null || result.getCode() != 200) {
-                throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE, "用户服务调用失败");
+                throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE, "用户信息查找失败");
             }
             UserDTO userDTO = result.getData();
             if (userDTO.getPointBalance() < bookChapter.getRequiredPoints()) {
@@ -211,6 +211,9 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
         }
         if (!Objects.equals(bookInfo.getAuthorId(), author.getId())) {
             throw new BusinessException(ResultCode.AUTHOR_NOT_PERMITTED);
+        }
+        if (bookInfo.getStatus().equals(BookStatusEnum.FINISHED.getCode())) {
+            throw new BusinessException(ResultCode.BOOK_IS_OVER);
         }
         Long count = this.lambdaQuery()
                 .eq(BookChapter::getBookId, bookId)
@@ -384,7 +387,7 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
             if (e instanceof BusinessException) {
                 throw (BusinessException) e;
             }
-            throw new BusinessException(ResultCode.SYSTEM_ERROR, "解锁章节失败，已自动退还积分");
+            throw new BusinessException(ResultCode.OPERATION_FAILED, "解锁章节失败，已自动退还积分");
         }
     }
 
@@ -409,7 +412,11 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
 
     }
 
-    private boolean isUnlockChapter(long userId, long chapterId) {
+    private boolean isUnlockChapter(BookInfo bookInfo, long userId, long chapterId) {
+        Author author = authorMapper.selectOne(new LambdaQueryWrapper<Author>().eq(Author::getUserId, userId));
+        if (author != null && bookInfo.getAuthorId().equals(author.getId())) {
+            return true;
+        }
         Long count = userChapterUnlockMapper.selectCount(new LambdaQueryWrapper<UserChapterUnlock>()
                 .eq(UserChapterUnlock::getUserId, userId)
                 .eq(UserChapterUnlock::getChapterId, chapterId)

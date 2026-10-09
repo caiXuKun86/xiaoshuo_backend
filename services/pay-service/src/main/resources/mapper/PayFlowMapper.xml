@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kun.service.pay.mapper.PayFlowMapper">
+
+    <resultMap id="BaseResultMap" type="com.kun.service.pay.domain.PayFlow">
+            <id property="id" column="id" />
+            <result property="flowNo" column="flow_no" />
+            <result property="orderNo" column="order_no" />
+            <result property="userId" column="user_id" />
+            <result property="payChannel" column="pay_channel" />
+            <result property="channelTradeNo" column="channel_trade_no" />
+            <result property="payAmount" column="pay_amount" />
+            <result property="payerAccount" column="payer_account" />
+            <result property="flowStatus" column="flow_status" />
+            <result property="callbackTime" column="callback_time" />
+            <result property="notifyPayload" column="notify_payload" />
+            <result property="createTime" column="create_time" />
+            <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,flow_no,order_no,user_id,pay_channel,channel_trade_no,
+        pay_amount,payer_account,flow_status,callback_time,notify_payload,
+        create_time,update_time
+    </sql>
+</mapper>

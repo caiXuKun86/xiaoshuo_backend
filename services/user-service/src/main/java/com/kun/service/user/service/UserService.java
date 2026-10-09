@@ -11,6 +11,7 @@ import com.kun.service.user.dto.resp.RefreshTokenRespDTO;
 import com.kun.service.user.dto.resp.UserLoginRespDTO;
 import com.kun.service.user.dto.resp.UserProfileQueryRespDTO;
 import com.kun.service.user.dto.resp.UserRegisterRespDTO;
+import com.kun.service.user.mq.message.PayOrderSuccessEvent;
 
 /**
 * @author Lenovo
@@ -34,4 +35,6 @@ public interface UserService extends IService<User> {
     void updateUserProfile(UserProfileUpdateReqDTO userProfileUpdateReqDTO);
 
     void updatePoints(UserPointsUpdateDTO updateDTO);
+
+    void updateUserAssetOnOrderPaySuccess(PayOrderSuccessEvent event);
 }

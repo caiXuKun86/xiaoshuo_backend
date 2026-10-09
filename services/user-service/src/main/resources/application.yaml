@@ -100,3 +100,8 @@ feign:
         connectTimeout: 2000 # 连接超时 2s
         readTimeout: 5000    # 读取超时 5s
         loggerLevel: BASIC
+
+
+
+rocketmq:
+  namesrv-addr: 127.0.0.1:9876

@@ -9,11 +9,21 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum PayChannelEnum {
-    NONE(0, "未选择"),
-    WECHAT(1, "微信支付"),
-    ALIPAY(2, "支付宝"),
-    APPLE_IAP(3, "苹果应用内购买(IAP)");
+    NONE(0, "支付宝"),
+    WECHAT(1, "微信支付");
 
     private final Integer code;
     private final String description;
+
+    public static PayChannelEnum getByCode(Integer code) {
+        if (code == null) {
+            return null;
+        }
+        for (PayChannelEnum type : values()) {
+            if (type.getCode().equals(code)) {
+                return type;
+            }
+        }
+        return null;
+    }
 }

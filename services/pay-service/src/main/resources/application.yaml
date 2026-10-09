@@ -1,0 +1,117 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: pay-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+    openfeign:
+      circuitbreaker:
+        enabled: true
+
+  # ========================================================
+  # 1. MySQL 数据源配置 (内置 HikariCP 连接池)
+  # ========================================================
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 根据实际情况替换数据库名（如 novel_user）
+    url: jdbc:mysql://127.0.0.1:3306/pay?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 1234
+    hikari:
+      minimum-idle: 5            # 最小空闲连接数
+      maximum-pool-size: 20      # 连接池最大连接数
+      idle-timeout: 300000       # 空闲连接存活最大时间 (毫秒)
+      connection-timeout: 30000  # 等待连接超时时间 (毫秒)
+      max-lifetime: 1800000      # 连接最长生命周期 (毫秒)
+
+  # ========================================================
+  # 2. Redis 缓存配置 (Spring Boot 3.x 规范: spring.data.redis)
+  # ========================================================
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      password: 1234
+      database: 0
+      timeout: 5000ms           # 连接超时时间
+      lettuce:
+        pool:
+          max-active: 16        # 连接池最大连接数 (负值表示没有限制)
+          max-idle: 8           # 连接池中的最大空闲连接
+          min-idle: 2           # 连接池中的最小空闲连接
+          max-wait: 3000ms      # 连接池最大阻塞等待时间
+
+# ========================================================
+# 3. MyBatis-Plus 核心配置
+# ========================================================
+mybatis-plus:
+  # XML 映射文件存放位置
+  mapper-locations: classpath*:/mapper/**/*.xml
+  # 实体类包路径 (支持通配符)
+  type-aliases-package: com.kun.service.pay.domain
+  configuration:
+    # 开启数据库下划线字段到 Java 驼峰属性映射 (例如: create_time -> createTime)
+    map-underscore-to-camel-case: true
+    # 控制台打印执行的 SQL 语句 (生产环境建议关闭或通过 logback 控制级别)
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    banner: false               # 关闭启动时的 MyBatis-Plus Logo
+    db-config:
+      # 全局主键策略：ASSIGN_ID (雪花算法，对应实体类 Long 类型)
+      id-type: assign_id
+      # 表名是否使用下划线命名规范
+      table-underline: true
+
+
+
+# Springdoc / Knife4j 配置
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+
+rocketmq:
+  namesrv-addr: 127.0.0.1:9876
+  producer:
+    group: pay_producer_group
+    send-timeout: 3000
+    retry-times: 0
+
+
+feign:
+  httpclient:
+    hc5:
+      enabled: true
+  client:
+    config:
+      default:
+        connectTimeout: 2000 # 连接超时 2s
+        readTimeout: 5000    # 读取超时 5s
+        loggerLevel: BASIC
+
+alipay:
+  sandbox: true
+  app-id: 9021000153638751        # 替换为你的沙箱 AppID
+  private-key: MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC+qc5asOlAdRbS1DAeNeXUYcWMT7zMcpEsiMLdwpA57C4VYzXz5LnLFY+geKog7bg2nSK+QJuh83AdqnYPCRNn+w44Pj0tcAOxkXHVAIsmQe4iTSuOmRMtltBsLu41aB5BOEyNfm1tPYOdQFjrYcY6kHkSq3cMNi9FExZZk47E6t0clTTaSloJOq/f+4bJqP9vFd/fdOQ6LeEUyJgA1MeZWe5jm0wFUasJKKSLlTJTEcxZuqEunCE6aaj4iRJXOoaJgjY9sLXvu+0VKWqJ9Q8oXxG4jDC8tfv21ZPoY6AEWmcA3EVI2fa9cMNrhzZAY2ieJiT/ESM3Lt4FDEm9rdHZAgMBAAECggEAIK34OaEzCaJIHDDUYok4cHOlqYwNPzmv2mNCi0IK+HKb33yWxcwBcGasrIOiHWzBc1LxnoxyYIraP6t0+tTCZ8MnR8qbL8uQRoI4cZrbPt50E5sIiTOBjwHXjYNpvuuuq90befEejmfJxE1AMHAcyvLyXZnYGNa8uWkxHn9lLCkNmQIojN+8879L2hHlHTdGu0aX+Jr0C4XHw2u/f3eozL/4elzrY047bgUTKHw4kU6t/rJSo5N2NiZCWWXqlTAV0A93VcmLY5nksWE+tp/O4ulRHlduHf59v00KR2OZfbh8v6IQk5VHXzxluXkd127WLEVAOfRGSyc3+e3lGia2AQKBgQDmmYBe8gbQM3q7IA8m3dlNDUPQ6KPyDrIPgxtz+3IUaPRm/J+5g5M3B9dkC2x01ITwACcC+e4vSkI6HL+okmVb2b1Uqe91MpDUItjmSSk92cNksK8Gja8xYYJqK/b5zapUXJQ3driGXgd8ICzTOv9f7ERXPYGeH8wuIQexaJqFmQKBgQDTqiv6O9nXptek3Mf/Zyomx+O3Dv+DjyX2UyEBw0SoGpGq/h3sKFMeSUbVNyGg51U/C3fUT8BuvrY5SX3jNuGiAv3kiLovGJ4/o0Hn9lom+yWCVH6B6l6EE2do/cQeuEWtrecxFcB38zWo+aeRwDUp9z7Aty4ExiCjgynVS2TWQQKBgFDva2jnlZCZoOfwlqDTmKM8lqLKJFCe68wZ/ha1GBMlyzIiVIUuMwtLi0On5scSmB4MT6Txx7F9ZMU0tegaicy1HYiLpGoD92UdXfdlkj4NIlFC2gt4yxaP3NAa4jJHBxNY8wSMfLNcaVAdkt4IhP1L1aixA79V9bnzCdowlptxAoGAI8j5dmz3/4Wtn6nUBlIixju1PBXFDTD+cg7L3chtqx4S0p3z4SFQLCanWxTfEp0JxIbj03lIR3Dmzfim1+tHamSnGCQlliDLYGbxlY4I395GESrH2J8PK7U8HnwI1EjDPwHPvHS4/Y6Y2+CZfALK+jVa3qoZlaUJj5t1TyJYAgECgYEAx210xs2V31ygwmCZaBx5WXRzH6UZO83HxBpXc+mu+sr/Hczs4tY2Z3mfV6th3cyB3ry5xvJofVbRBpQKpaQE1vWlHcOkteSmgJa+nDFa0BmJHrZXKPOyXOC3krUPPswcQ/8zOUTmh82d8tM0J8tA9btpCMFYzd6te1TeP3z0xw4=
+  alipay-public-key: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtmJzpP9SO4WboFXHkIm/+goguNO3kXkYyi9QBa9O+JnPDwR0il7g75iW3BhN93DjJsItnu8CnSyG1Yyok09Dh1fOwnIxvSmjDdgopii1oZVb+fHbPm6DHlDDwEWipvKvmakpgaf2WcKu2Rm7rt3NqvtbdGmB6co8fjpxGH/D5aJ2/Bnx/mMWPDRnzdbRnolp3nFWcbShrodjutL+TNUDVr3HBrOpMpOfHFqR6/y0RZQdTyoemBCqpR7af8X4XhLR4xJ3AO5O1g7Lxz5KHosjU7O52OZ+8PxNFcHjefR0dFCfFdEooFTsjOWU88IDxrlZy7BYo3XRpW1S4G5vci69PQIDAQAB
+  server-url: https://openapi-sandbox.dl.alipaydev.com/gateway.do
+  format: json
+  charset: UTF-8
+  sign-type: RSA2
+  # 同步跳转地址（用户付完款后浏览器重定向的前端页面）
+  return-url: http://localhost:5173/pay/success
+  # 异步回调地址（必须是公网可访问的地址，用于接收付款成功通知）
+  notify-url: http://你的公网域名或内网穿透域名/api/v1/pay/order/notify/alipay

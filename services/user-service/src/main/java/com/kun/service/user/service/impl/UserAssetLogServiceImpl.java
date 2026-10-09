@@ -7,7 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kun.common.core.context.UserContextHolder;
 import com.kun.common.core.enums.AssetChangeTypeEnum;
 import com.kun.common.core.enums.ResultCode;
-import com.kun.common.core.enums.VipLevelEnum;
+import com.kun.common.core.enums.UserVipLevelEnum;
 import com.kun.common.core.exception.BusinessException;
 import com.kun.common.database.page.PageResult;
 import com.kun.common.redis.constant.RedisKeyConstants;
@@ -86,7 +86,7 @@ public class UserAssetLogServiceImpl extends ServiceImpl<UserAssetLogMapper, Use
             }
 
             // 3. 根据是否是 VIP 执行策略计算积分
-            SignRewardStrategy strategy = strategyFactory.getStrategy(VipLevelEnum.of(user.getIsVip()));
+            SignRewardStrategy strategy = strategyFactory.getStrategy(UserVipLevelEnum.of(user.getIsVip()));
             int pointsAwarded = strategy.calculatePoints();
             int newPointBalance = user.getPointBalance() + pointsAwarded;
 

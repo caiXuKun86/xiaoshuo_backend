@@ -17,6 +17,7 @@
         <module>user-service</module>
         <module>comment-service</module>
         <module>shelf-service</module>
+        <module>pay-service</module>
     </modules>
 
     <properties>

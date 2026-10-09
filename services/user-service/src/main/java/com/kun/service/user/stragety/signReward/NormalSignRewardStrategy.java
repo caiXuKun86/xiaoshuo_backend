@@ -1,15 +1,15 @@
 package com.kun.service.user.stragety.signReward;
 
 import cn.hutool.core.util.RandomUtil;
-import com.kun.common.core.enums.VipLevelEnum;
+import com.kun.common.core.enums.UserVipLevelEnum;
 import org.springframework.stereotype.Component;
 
 @Component
 public class NormalSignRewardStrategy implements SignRewardStrategy {
 
     @Override
-    public VipLevelEnum getVipLevel() {
-        return VipLevelEnum.NORMAL;
+    public UserVipLevelEnum getVipLevel() {
+        return UserVipLevelEnum.NORMAL;
     }
 
     @Override

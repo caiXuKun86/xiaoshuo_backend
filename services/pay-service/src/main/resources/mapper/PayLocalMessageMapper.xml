@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kun.service.pay.mapper.PayLocalMessageMapper">
+
+    <resultMap id="BaseResultMap" type="com.kun.service.pay.domain.PayLocalMessage">
+            <id property="id" column="id" />
+            <result property="messageId" column="message_id" />
+            <result property="bizType" column="biz_type" />
+            <result property="bizOrderNo" column="biz_order_no" />
+            <result property="topic" column="topic" />
+            <result property="payload" column="payload" />
+            <result property="status" column="status" />
+            <result property="retryCount" column="retry_count" />
+            <result property="maxRetry" column="max_retry" />
+            <result property="nextRetryTime" column="next_retry_time" />
+            <result property="createTime" column="create_time" />
+            <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,message_id,biz_type,biz_order_no,topic,payload,
+        status,retry_count,max_retry,next_retry_time,create_time,
+        update_time
+    </sql>
+</mapper>

@@ -28,6 +28,7 @@
         <knife4j.version>4.5.0</knife4j.version>
         <hutool.version>5.8.26</hutool.version>
         <jwt.version>0.12.5</jwt.version>
+        <alipay.version>4.39.31.ALL</alipay.version>
     </properties>
     <modules>
         <module>common</module>
@@ -100,6 +101,7 @@
                 <artifactId>common-oss</artifactId>
                 <version>${project.version}</version>
             </dependency>
+
             <dependency>
                 <groupId>com.kun</groupId>
                 <artifactId>api</artifactId>
@@ -167,6 +169,14 @@
                 <artifactId>jjwt-jackson</artifactId>
                 <version>${jwt.version}</version>
                 <scope>runtime</scope>
+            </dependency>
+
+
+            <!-- 支付宝官方 SDK -->
+            <dependency>
+                <groupId>com.alipay.sdk</groupId>
+                <artifactId>alipay-sdk-java</artifactId>
+                <version>${alipay.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

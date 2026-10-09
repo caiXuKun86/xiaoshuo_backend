@@ -17,4 +17,17 @@ public enum OrderStatusEnum {
 
     private final Integer code;
     private final String description;
+
+    public static OrderStatusEnum getByCode(Integer code) {
+        if (code == null) {
+            return null;
+        }
+        for (OrderStatusEnum value : OrderStatusEnum.values()) {
+            if (value.code.equals(code)) {
+                return value;
+            }
+        }
+        return null;
+    }
+
 }

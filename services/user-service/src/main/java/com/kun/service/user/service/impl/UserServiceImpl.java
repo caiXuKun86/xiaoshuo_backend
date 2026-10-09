@@ -5,12 +5,12 @@ import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.BCrypt;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kun.api.dto.user.UserPointsUpdateDTO;
 import com.kun.common.core.context.LoginUser;
 import com.kun.common.core.context.UserContextHolder;
-import com.kun.common.core.enums.ResultCode;
-import com.kun.common.core.enums.UserGenderEnum;
+import com.kun.common.core.enums.*;
 import com.kun.common.core.exception.BusinessException;
 import com.kun.common.core.utils.JwtUtils;
 import com.kun.common.oss.constants.OSSConstants;
@@ -27,6 +27,7 @@ import com.kun.service.user.dto.resp.UserProfileQueryRespDTO;
 import com.kun.service.user.dto.resp.UserRegisterRespDTO;
 import com.kun.service.user.mapper.UserAssetLogMapper;
 import com.kun.service.user.mapper.UserMapper;
+import com.kun.service.user.mq.message.PayOrderSuccessEvent;
 import com.kun.service.user.service.UserService;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
@@ -323,6 +324,57 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (insert < 1) {
             throw new BusinessException(ResultCode.OPERATION_FAILED);
         }
+
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateUserAssetOnOrderPaySuccess(PayOrderSuccessEvent event) {
+        Long userId = event.getUserId();
+        Integer skuType = event.getSkuType();
+        Integer points = event.getPoints();
+        Integer vipDays = event.getVipDays();
+        String orderNo = event.getOrderNo();
+
+        Long count = userAssetLogMapper.selectCount(
+                new LambdaQueryWrapper<UserAssetLog>()
+                        .eq(UserAssetLog::getOrderNo, orderNo)
+        );
+        if (count > 0) {
+            return;
+        }
+
+        User user = baseMapper.selectByUserIdForUpdate(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        int balanceBefore = user.getPointBalance(); // 变动前积分
+        int balanceAfter = balanceBefore + points; // 变动后积分
+        if (skuType.equals(SkuTypeEnum.POINT_PKG.getCode())) {
+            this.lambdaUpdate()
+                    .set(User::getPointBalance, balanceAfter)
+                    .update();
+        } else {
+            this.lambdaUpdate()
+                    .set(User::getIsVip, UserVipLevelEnum.VIP.getCode())
+                    .set(User::getVipExpireTime, LocalDateTime.now().plusDays(vipDays))
+                    .update();
+        }
+        UserAssetLog assetLog = new UserAssetLog();
+        assetLog.setUserId(userId);
+        assetLog.setChangeType(AssetChangeTypeEnum.RECHARGE.getCode());
+        assetLog.setBalanceChange(points);
+        assetLog.setBalanceBefore(balanceBefore);
+        assetLog.setBalanceAfter(balanceAfter);
+        assetLog.setBizId(null);
+        assetLog.setOrderNo(orderNo);
+        if (SkuTypeEnum.POINT_PKG.getCode().equals(skuType)) {
+            assetLog.setTitle("充值到账");
+        } else {
+            assetLog.setTitle("VIP充值成功");
+        }
+        userAssetLogMapper.insert(assetLog);
+
 
     }
 

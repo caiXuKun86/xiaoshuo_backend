@@ -106,9 +106,16 @@ public final class RedisKeyConstants {
     public static final String PAY_ORDER_LOCK_PREFIX = "pay:lock:order:";
 
     /**
-     * 章节兑换并发防重分布式锁 Key: pay:lock:exchange:{userId}:{chapterId}
+     * 支付成功业务操作分布式锁 Key: lock:pay:order:complete:{orderNo}
      */
-    public static final String CHAPTER_EXCHANGE_LOCK_PREFIX = "pay:lock:exchange:";
+    public static final String LOCK_PAY_ORDER_COMPLETE = "lock:pay:order:%s";
+
+    /**
+     * 控制对同一笔订单查询支付宝的频次 Key pay:query:throttle:{orderNo}
+     */
+    public static final String RATE_PAY_QUERY_ORDER = "lock:pay:order:%s";
+
+
 
     // ==================== 7. 搜索与榜单服务 (Search Service) ====================
     /**

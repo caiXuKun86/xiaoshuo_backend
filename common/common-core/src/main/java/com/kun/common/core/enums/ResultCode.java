@@ -76,7 +76,10 @@ public enum ResultCode implements IResultCode {
 
     // ==================== 60000 ~ 69999 交易支付服务 (Pay) ====================
 
-    PAY_SKU_NOT_FOUND(60003, "充值套餐不存在或已下架"),
+    PAY_SKU_NOT_FOUND(60001, "充值套餐不存在或已下架"),
+    ORDER_CREATE_FAILED(60002, "订单创建失败"),
+    ORDER_NOT_FOUND(60003, "订单不存在"),
+    ORDER_AMOUNT_NOT_EQUAL(60003, "支付金额与订单金额不一致"),
     PAY_ORDER_EXPIRED(60004, "订单支付已超时关闭，请重新下单"),
     PAY_SIGN_VERIFY_FAIL(60005, "支付回调签名校验失败"),
     PAY_CHANNEL_TIMEOUT(60006, "第三方支付渠道响应超时"),

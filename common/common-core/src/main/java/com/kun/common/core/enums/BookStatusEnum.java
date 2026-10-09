@@ -14,4 +14,16 @@ public enum BookStatusEnum {
 
     private final Integer code;
     private final String description;
+
+    public static BookStatusEnum getByCode(Integer code) {
+        if (code == null) {
+            return null;
+        }
+        for (BookStatusEnum type : values()) {
+            if (type.getCode().equals(code)) {
+                return type;
+            }
+        }
+        return null;
+    }
 }

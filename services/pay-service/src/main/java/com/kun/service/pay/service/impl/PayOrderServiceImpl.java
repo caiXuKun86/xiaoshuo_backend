@@ -59,6 +59,7 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -94,88 +95,124 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder>
         Long userId = UserContextHolder.getUserId();
         Integer payChannel = orderCreateReqDTO.getPayChannel();
         String payScene = orderCreateReqDTO.getPayScene();
-
-        RechargeSku rechargeSku = skuMapper.selectById(skuId);
-        if (rechargeSku == null || rechargeSku.getStatus().equals(SkuStatusEnum.OFF_SALE.getCode())) {
-            throw new BusinessException(ResultCode.PAY_SKU_NOT_FOUND);
-        }
-
-        PayOrder payOrder = new PayOrder();
-        // 2. 生成全局唯一订单号 (REC + 时间戳 + 随机数)
-        String orderNo = "REC" + System.currentTimeMillis() + RandomUtil.randomNumbers(6);
-        payOrder.setOrderNo(orderNo);
-        payOrder.setUserId(userId);
-        payOrder.setSkuId(skuId);
-        payOrder.setSkuType(rechargeSku.getSkuType());
-        payOrder.setSkuName(rechargeSku.getName());
-        payOrder.setOrderAmount(rechargeSku.getOriginalPrice());
-        payOrder.setPayAmount(rechargeSku.getActualPrice());
-        payOrder.setPointsAmount(rechargeSku.getPointsAmount());
-        payOrder.setExtraPoints(rechargeSku.getExtraPoints());
-        payOrder.setVipDays(rechargeSku.getVipDays());
-        payOrder.setPayChannel(payChannel);
-        payOrder.setOrderStatus(OrderStatusEnum.PENDING.getCode());
-        payOrder.setExpireTime(LocalDateTime.now().plusMinutes(15));
-        boolean save = this.save(payOrder);
-        if (!save) {
-            throw new BusinessException(ResultCode.ORDER_CREATE_FAILED);
-        }
-
-        AlipayTradePagePayRequest request = new AlipayTradePagePayRequest();
-        AlipayTradePagePayModel model = new AlipayTradePagePayModel();
-
-        request.setReturnUrl(alipayProperties.getReturnUrl());
-        request.setNotifyUrl(alipayProperties.getNotifyUrl());
-
-        // 设置商户订单号
-        model.setOutTradeNo(orderNo);
-
-        // 设置订单总金额
-        BigDecimal amountInYuan = BigDecimal.valueOf(rechargeSku.getActualPrice())
-                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-        model.setTotalAmount(amountInYuan.toString());
-
-        // 设置订单标题
-        model.setSubject(rechargeSku.getName());
-
-        // 设置产品码
-        model.setProductCode("FAST_INSTANT_TRADE_PAY");
-        // 与订单失效时间15分钟保持一致
-        model.setTimeoutExpress("15m");
-
-        request.setBizModel(model);
-
-        OrderCreateRespDTO respDTO;
+        // 1. 分布式防重锁：同一用户同一套餐 3 秒内禁止重复连续点击
+        String lockKey = RedisKeyConstants.PAY_ORDER_LOCK_PREFIX + userId + ":" + skuId;
+        RLock lock = redissonClient.getLock(lockKey);
         try {
-            // 5. 执行调用生成 PC 端 HTML 表单
-            AlipayTradePagePayResponse response = alipayClient.pageExecute(request);
-            if (!response.isSuccess()) {
+            boolean acquired = lock.tryLock(0, 3, TimeUnit.SECONDS);
+            if (!acquired) {
+                throw new BusinessException(ResultCode.REQUEST_RATE_LIMIT, "请勿频繁重复点击下单");
+            }
+            // 2. 校验套餐
+            RechargeSku rechargeSku = skuMapper.selectById(skuId);
+            if (rechargeSku == null || rechargeSku.getStatus().equals(SkuStatusEnum.OFF_SALE.getCode())) {
+                throw new BusinessException(ResultCode.PAY_SKU_NOT_FOUND);
+            }
+            // 3. 检查用户是否已存在同款套餐的待支付有效订单
+            PayOrder payOrder = this.lambdaQuery()
+                    .eq(PayOrder::getUserId, userId)
+                    .eq(PayOrder::getSkuId, skuId)
+                    .eq(PayOrder::getOrderStatus, OrderStatusEnum.PENDING.getCode())
+                    .gt(PayOrder::getExpireTime, LocalDateTime.now())
+                    .last("LIMIT 1")
+                    .one();
+
+            String orderNo;
+            boolean isNewOrder = false; // 标记是否为新订单
+
+            if (payOrder == null) {
+                isNewOrder = true;
+                payOrder = new PayOrder();
+                orderNo = "REC" + System.currentTimeMillis() + RandomUtil.randomNumbers(6);
+                payOrder.setOrderNo(orderNo);
+                payOrder.setUserId(userId);
+                payOrder.setSkuId(skuId);
+                payOrder.setSkuType(rechargeSku.getSkuType());
+                payOrder.setSkuName(rechargeSku.getName());
+                payOrder.setOrderAmount(rechargeSku.getOriginalPrice());
+                payOrder.setPayAmount(rechargeSku.getActualPrice());
+                payOrder.setPointsAmount(rechargeSku.getPointsAmount());
+                payOrder.setExtraPoints(rechargeSku.getExtraPoints());
+                payOrder.setVipDays(rechargeSku.getVipDays());
+                payOrder.setPayChannel(payChannel);
+                payOrder.setOrderStatus(OrderStatusEnum.PENDING.getCode());
+                payOrder.setExpireTime(LocalDateTime.now().plusMinutes(15));
+
+                boolean save = this.save(payOrder);
+                if (!save) {
+                    throw new BusinessException(ResultCode.ORDER_CREATE_FAILED);
+                }
+            } else {
+                // 复用已有订单
+                orderNo = payOrder.getOrderNo();
+                log.info("用户复用已有未支付订单, orderNo: {}", orderNo);
+            }
+
+            // 4. 构造支付宝电脑网站支付请求
+            AlipayTradePagePayRequest request = new AlipayTradePagePayRequest();
+            AlipayTradePagePayModel model = new AlipayTradePagePayModel();
+
+            request.setReturnUrl(alipayProperties.getReturnUrl());
+            request.setNotifyUrl(alipayProperties.getNotifyUrl());
+
+            model.setOutTradeNo(orderNo);
+
+            // 设置订单总金额 (分 -> 元)
+            BigDecimal amountInYuan = BigDecimal.valueOf(rechargeSku.getActualPrice())
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            model.setTotalAmount(amountInYuan.toString());
+            model.setSubject(rechargeSku.getName());
+            model.setProductCode("FAST_INSTANT_TRADE_PAY");
+
+            long remainSeconds = Duration.between(LocalDateTime.now(), payOrder.getExpireTime()).getSeconds();
+            int safeExpireSeconds = Math.max(60, (int) remainSeconds); // 至少留 1 分钟
+            model.setTimeoutExpress((safeExpireSeconds / 60 + 1) + "m");
+
+            request.setBizModel(model);
+
+            OrderCreateRespDTO respDTO;
+            try {
+                // 调用 SDK 生成 PC 端 HTML 表单
+                AlipayTradePagePayResponse response = alipayClient.pageExecute(request);
+                if (!response.isSuccess()) {
+                    throw new BusinessException(ResultCode.ORDER_CREATE_FAILED);
+                }
+                String formHtml = response.getBody();
+
+                // 组装响应 DTO 返回给前端
+                respDTO = new OrderCreateRespDTO();
+                respDTO.setOrderNo(orderNo);
+                respDTO.setOrderAmount(payOrder.getOrderAmount());
+                respDTO.setPayChannel(payChannel);
+                respDTO.setExpireTime(payOrder.getExpireTime());
+                respDTO.setExpireSecond(safeExpireSeconds); // 真实的剩余倒计时
+
+                Map<String, String> payParams = new HashMap<>();
+                payParams.put("form", formHtml);
+                respDTO.setPayParams(payParams);
+
+            } catch (AlipayApiException e) {
+                log.error("调用支付宝电脑网站支付接口异常, orderNo={}", orderNo, e);
                 throw new BusinessException(ResultCode.ORDER_CREATE_FAILED);
             }
-            String formHtml = response.getBody();
-            // 6. 组装响应 DTO 返回给前端
-            respDTO = new OrderCreateRespDTO();
-            respDTO.setOrderNo(orderNo);
-            respDTO.setOrderAmount(payOrder.getOrderAmount());
-            respDTO.setPayChannel(payChannel);
-            respDTO.setExpireTime(payOrder.getExpireTime());
-            respDTO.setExpireSecond(15 * 60);
 
-            // 将生成的 HTML 表单放入 payParams 返回
-            Map<String, String> payParams = new HashMap<>();
-            payParams.put("form", formHtml);
-            respDTO.setPayParams(payParams);
+            // -------------------------------------------------------------
+            // 【修复 2】：只有新创建的订单，才发送延迟关单消息！
+            // -------------------------------------------------------------
+            if (isNewOrder) {
+                sendOrderDelayCloseMessage(orderNo);
+            }
 
-        } catch (AlipayApiException e) {
-            log.error("调用支付宝电脑网站支付接口异常, orderNo={}", orderNo, e);
-            throw new BusinessException(ResultCode.ORDER_CREATE_FAILED);
+            return respDTO;
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new BusinessException(ResultCode.REQUEST_RATE_LIMIT, "系统繁忙，请重试");
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
         }
-        sendOrderDelayCloseMessage(orderNo);
-
-
-        return respDTO;
-
-
     }
 
     private void sendOrderDelayCloseMessage(String orderNo) {
@@ -308,7 +345,7 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder>
 
         return PageResult.of(page, payOrder -> {
             OrderPageRespDTO orderPageRespDTO = new OrderPageRespDTO();
-            BeanUtil.copyProperties(payOrder,orderPageRespDTO);
+            BeanUtil.copyProperties(payOrder, orderPageRespDTO);
             orderPageRespDTO.setPayChannelName(PayChannelEnum.getByCode(payOrder.getPayChannel()).getDescription());
             orderPageRespDTO.setOrderStatusDesc(OrderStatusEnum.getByCode(payOrder.getOrderStatus()).getDescription());
             return orderPageRespDTO;
@@ -351,7 +388,7 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder>
                     return true;
                 }
             }
-        } catch (Exception e){
+        } catch (Exception e) {
             log.warn("查单异常, orderNo={}", orderNo, e);
         }
         return false;

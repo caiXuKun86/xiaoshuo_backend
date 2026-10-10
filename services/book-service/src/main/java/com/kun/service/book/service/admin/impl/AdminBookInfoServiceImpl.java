@@ -1,4 +1,4 @@
-package com.kun.service.book.service.impl;
+package com.kun.service.book.service.admin.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
@@ -25,7 +25,7 @@ import com.kun.service.book.dto.req.BookRankPageReqDTO;
 import com.kun.service.book.dto.req.BookSearchPageReqDTO;
 import com.kun.service.book.dto.resp.*;
 import com.kun.service.book.mapper.*;
-import com.kun.service.book.service.BookInfoService;
+import com.kun.service.book.service.admin.AdminBookInfoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -49,7 +49,7 @@ import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
-public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> implements BookInfoService {
+public class AdminBookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> implements AdminBookInfoService {
     private final StringRedisTemplate stringRedisTemplate;
     private final BookChapterMapper bookChapterMapper;
 

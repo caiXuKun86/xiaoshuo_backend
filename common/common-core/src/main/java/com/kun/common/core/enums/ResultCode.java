@@ -42,6 +42,10 @@ public enum ResultCode implements IResultCode {
     INSUFFICIENT_POINTS(20006, "可用积分余额不足"),
 
     // ==================== 30000 ~ 39999 图书与内容服务 (Book) ====================
+    CATEGORY_NOT_EXISTED(30012, "分类不存在"),
+    CATEGORY_SUB_EXISTED(30012, "删除失败,分类下存在子分类"),
+    CATEGORY_BOOK_EXISTED(30012, "分类不存在,分类下存在图书"),
+
     BOOK_NOT_FOUND(30001, "作品不存在或已下架"),
     CHAPTER_NOT_FOUND(30002, "章节不存在或已被作者删除"),
     CHAPTER_NEED_PURCHASE(30003, "本章节为付费章节，需要解锁后阅读"),
@@ -53,7 +57,6 @@ public enum ResultCode implements IResultCode {
     NOT_AN_AUTHOR(30009, "非作家"),
     AUTHOR_BANNED(30010, "您已被封禁"),
     ALREADY_HAVE_BOOK(30011, "书名重复"),
-    CATEGORY_NOT_EXISTED(30012, "分类不存在"),
     AUTHOR_NOT_PERMITTED(30013, "无权修改或操作他人作品与章节"),
     UPLOAD_CONTENT_FAILED(30014, "内容上传失败,请重试"),
     ALREADY_PUBLISH_INDEX(30015, "您已发送过本章节"),

@@ -20,6 +20,7 @@ public class BookChapterController {
     private final BookChapterService bookChapterService;
 
 
+
     @GetMapping("/{bookId}/{chapterId}/content")
     public Result<BookChapterQueryRespDTO> queryBookChapter(@PathVariable("bookId") Long bookId, @PathVariable("chapterId") Long chapterId) {
         BookChapterQueryRespDTO bookChapterQueryRespDTO = bookChapterService.queryBookChapter(bookId, chapterId);

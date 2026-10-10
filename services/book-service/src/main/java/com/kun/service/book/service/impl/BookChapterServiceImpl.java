@@ -149,7 +149,7 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
             if (!b) {
                 throw new BusinessException(ResultCode.REQUEST_RATE_LIMIT);
             }
-            if (isUnlockChapter(bookInfo,userId, chapterId)) {
+            if (isUnlockChapter(bookInfo, userId, chapterId)) {
                 throw new BusinessException(ResultCode.CHAPTER_ALREADY_UNLOCKED);
             }
             Result<UserDTO> result = userFeignClient.getUserById(userId);
@@ -235,25 +235,11 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
         int wordCount = computeContentLength(content);
         bookChapter.setWordCount(wordCount);
         bookChapter.setParagraphCount(countParagraphs(content));
-        //TODO 审核
-        bookChapter.setStatus(ChapterStatusEnum.PUBLISHED.getCode());
+        bookChapter.setStatus(ChapterStatusEnum.AUDITING.getCode());
         boolean save = this.save(bookChapter);
         if (!save) {
             throw new BusinessException(ResultCode.OPERATION_FAILED);
         }
-        int update = bookInfoMapper.update(
-                new LambdaUpdateWrapper<BookInfo>()
-                        .eq(BookInfo::getId, bookId)
-                        .setSql("word_count=word_count+" + wordCount)
-                        .set(BookInfo::getLatestChapterId, bookChapter.getId())
-                        .set(BookInfo::getLatestChapterName, bookChapter.getChapterName())
-                        .set(BookInfo::getLatestChapterTime, LocalDateTime.now())
-        );
-        if (update < 1) {
-            throw new BusinessException(ResultCode.OPERATION_FAILED);
-        }
-        cacheUtil.delete(String.format(RedisKeyConstants.CACHE_BOOK_CATALOG, bookId));
-        cacheUtil.delete(String.format(RedisKeyConstants.BOOK_INFO_PREFIX, bookId));
 
         ChapterPublishRespDTO dto = new ChapterPublishRespDTO();
         BeanUtil.copyProperties(bookChapter, dto);
@@ -342,6 +328,7 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
         return dto;
 
     }
+
 
     private void doExchangeChapter(long userId, UserDTO userDTO, BookChapter bookChapter, BookInfo bookInfo) {
         // 1. 组装远程扣积分参数

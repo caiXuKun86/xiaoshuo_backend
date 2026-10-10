@@ -7,12 +7,12 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-public class BookFilterPageReqDTO extends com.kun.common.database.page.PageRequest {
+public class BookInfoPageReqDTO extends com.kun.common.database.page.PageRequest {
 
     /**
      * 频道筛选
      */
-    private Integer channelId=0;
+    private Integer channelId = 0;
 
     /**
      * 二级分类 ID
@@ -23,8 +23,6 @@ public class BookFilterPageReqDTO extends com.kun.common.database.page.PageReque
      * 连载状态
      */
     private Integer bookStatus;
-
-
 
 
 }

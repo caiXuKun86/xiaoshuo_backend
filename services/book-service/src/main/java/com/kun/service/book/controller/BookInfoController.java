@@ -3,11 +3,11 @@ package com.kun.service.book.controller;
 import com.kun.common.core.result.Result;
 import com.kun.common.database.page.PageResult;
 import com.kun.common.oss.template.OssTemplate;
-import com.kun.service.book.dto.req.BookFilterPageReqDTO;
+import com.kun.service.book.dto.req.BookInfoPageReqDTO;
 import com.kun.service.book.dto.req.BookPublishReqDTO;
 import com.kun.service.book.dto.resp.BookCatalogQueryRespDTO;
-import com.kun.service.book.dto.resp.BookDetailQueryRespDTO;
-import com.kun.service.book.dto.resp.BookPageRespDTO;
+import com.kun.service.book.dto.resp.BookInfoDetailRespDTO;
+import com.kun.service.book.dto.resp.BookInfoPageRespDTO;
 import com.kun.service.book.dto.resp.BookPublishRespDTO;
 import com.kun.service.book.service.BookInfoService;
 import lombok.RequiredArgsConstructor;
@@ -21,20 +21,20 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/book")
 @RequiredArgsConstructor
-public class BookController {
+public class BookInfoController {
 
     private final BookInfoService bookInfoService;
     private final OssTemplate ossTemplate;
 
     @GetMapping("/filter")
-    public Result<PageResult<BookPageRespDTO>> pageBook(BookFilterPageReqDTO bookPageReqDTO) {
-        PageResult<BookPageRespDTO> pageResult = bookInfoService.pageBook(bookPageReqDTO);
+    public Result<PageResult<BookInfoPageRespDTO>> queryBookInfoPage(BookInfoPageReqDTO bookInfoPageReqDTO) {
+        PageResult<BookInfoPageRespDTO> pageResult = bookInfoService.queryBookInfoPage(bookInfoPageReqDTO);
         return Result.success(pageResult);
     }
 
     @GetMapping("/detail/{id}")
-    public Result<BookDetailQueryRespDTO> queryBookDetail(@PathVariable("id") Long id) {
-        BookDetailQueryRespDTO bookDetailQueryRespDTO = bookInfoService.queryBookDetailById(id);
+    public Result<BookInfoDetailRespDTO> queryBookInfoDetail(@PathVariable("id") Long id) {
+        BookInfoDetailRespDTO bookDetailQueryRespDTO = bookInfoService.queryBookInfoDetail(id);
         return Result.success(bookDetailQueryRespDTO);
     }
 

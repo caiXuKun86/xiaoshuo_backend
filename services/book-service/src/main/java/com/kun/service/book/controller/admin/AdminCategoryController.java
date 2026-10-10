@@ -10,7 +10,7 @@ import com.kun.service.book.dto.admin.req.AdminCategoryUpdateRepDTO;
 import com.kun.service.book.dto.admin.resp.AdminCategoryAddRespDTO;
 import com.kun.service.book.dto.admin.resp.AdminCategoryDetailRespDTO;
 import com.kun.service.book.dto.admin.resp.AdminCategoryPageRespDTO;
-import com.kun.service.book.dto.admin.resp.AdminCategoryQueryRespDTO;
+import com.kun.service.book.dto.admin.resp.AdminCategoryTreeRespDTO;
 import com.kun.service.book.service.admin.AdminCategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -26,14 +26,14 @@ public class AdminCategoryController {
     private final AdminCategoryService categoryService;
 
     @GetMapping("/tree")
-    public Result<List<AdminCategoryQueryRespDTO>> queryCategoryTree() {
-        List<AdminCategoryQueryRespDTO> categoriesQueryRespDTO = categoryService.queryCategories();
+    public Result<List<AdminCategoryTreeRespDTO>> queryCategoryTree() {
+        List<AdminCategoryTreeRespDTO> categoriesQueryRespDTO = categoryService.queryCategoryTree();
         return Result.success(categoriesQueryRespDTO);
     }
 
     @GetMapping("/list")
     public Result<PageResult<AdminCategoryPageRespDTO>> queryCategoryPage(AdminCategoryPageReqDTO categoryPageReqDTO) {
-        PageResult<AdminCategoryPageRespDTO> pageResult = categoryService.pageCategories(categoryPageReqDTO);
+        PageResult<AdminCategoryPageRespDTO> pageResult = categoryService.queryCategoryPage(categoryPageReqDTO);
         return Result.success(pageResult);
     }
 

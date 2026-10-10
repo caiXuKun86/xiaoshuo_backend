@@ -17,7 +17,7 @@ import com.kun.service.book.dto.admin.req.AdminCategoryPageReqDTO;
 import com.kun.service.book.dto.admin.req.AdminCategoryUpdateRepDTO;
 import com.kun.service.book.dto.admin.resp.AdminCategoryAddRespDTO;
 import com.kun.service.book.dto.admin.resp.AdminCategoryPageRespDTO;
-import com.kun.service.book.dto.admin.resp.AdminCategoryQueryRespDTO;
+import com.kun.service.book.dto.admin.resp.AdminCategoryTreeRespDTO;
 import com.kun.service.book.mapper.BookInfoMapper;
 import com.kun.service.book.mapper.CategoryMapper;
 import com.kun.service.book.service.admin.AdminCategoryService;
@@ -44,23 +44,23 @@ public class AdminCategoryServiceImpl extends ServiceImpl<CategoryMapper, Catego
     private final StringRedisTemplate stringRedisTemplate;
 
     @Override
-    public List<AdminCategoryQueryRespDTO> queryCategories() {
+    public List<AdminCategoryTreeRespDTO> queryCategoryTree() {
         // 1. 过滤状态并排序（确保 parentId = 0 排在前面，避免顺序依赖）
         List<Category> categoryList = this.lambdaQuery()
                 .orderByAsc(Category::getParentId) // 保证顶级分类先进入 Map
                 .orderByAsc(Category::getSort)
                 .list();
-        Map<Long, AdminCategoryQueryRespDTO> categoryMap = new HashMap<>();
-        List<AdminCategoryQueryRespDTO> list = new ArrayList<>();
+        Map<Long, AdminCategoryTreeRespDTO> categoryMap = new HashMap<>();
+        List<AdminCategoryTreeRespDTO> list = new ArrayList<>();
 
         categoryList.forEach((category) -> {
             if (category.getParentId() == 0) {
-                AdminCategoryQueryRespDTO categoryQueryRespDTO = new AdminCategoryQueryRespDTO(category.getId(), category.getName(), category.getSort(), 0L, category.getStatus(), new ArrayList<>());
+                AdminCategoryTreeRespDTO categoryQueryRespDTO = new AdminCategoryTreeRespDTO(category.getId(), category.getName(), category.getSort(), 0L, category.getStatus(), new ArrayList<>());
                 categoryMap.put(category.getId(), categoryQueryRespDTO);
                 list.add(categoryQueryRespDTO);
             } else {
-                AdminCategoryQueryRespDTO categoryQueryRespDTO = new AdminCategoryQueryRespDTO(category.getId(), category.getName(), category.getSort(), category.getParentId(), category.getStatus(), null);
-                AdminCategoryQueryRespDTO parent = categoryMap.get(category.getParentId());
+                AdminCategoryTreeRespDTO categoryQueryRespDTO = new AdminCategoryTreeRespDTO(category.getId(), category.getName(), category.getSort(), category.getParentId(), category.getStatus(), null);
+                AdminCategoryTreeRespDTO parent = categoryMap.get(category.getParentId());
                 if (parent != null) {
                     parent.getChildren().add(categoryQueryRespDTO);
                 }
@@ -72,7 +72,7 @@ public class AdminCategoryServiceImpl extends ServiceImpl<CategoryMapper, Catego
     }
 
     @Override
-    public PageResult<AdminCategoryPageRespDTO> pageCategories(AdminCategoryPageReqDTO reqDTO) {
+    public PageResult<AdminCategoryPageRespDTO> queryCategoryPage(AdminCategoryPageReqDTO reqDTO) {
 
         String name = reqDTO.getName();
         Integer channelId = reqDTO.getChannelId();

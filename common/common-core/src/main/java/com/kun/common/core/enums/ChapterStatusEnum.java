@@ -9,7 +9,6 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum ChapterStatusEnum {
-    DRAFT(0, "草稿"),
     AUDITING(1, "待审核"),
     PUBLISHED(2, "已发布");
 

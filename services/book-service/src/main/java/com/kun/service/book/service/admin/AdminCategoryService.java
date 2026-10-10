@@ -8,7 +8,7 @@ import com.kun.service.book.dto.admin.req.AdminCategoryPageReqDTO;
 import com.kun.service.book.dto.admin.req.AdminCategoryUpdateRepDTO;
 import com.kun.service.book.dto.admin.resp.AdminCategoryAddRespDTO;
 import com.kun.service.book.dto.admin.resp.AdminCategoryPageRespDTO;
-import com.kun.service.book.dto.admin.resp.AdminCategoryQueryRespDTO;
+import com.kun.service.book.dto.admin.resp.AdminCategoryTreeRespDTO;
 
 import java.util.List;
 
@@ -19,9 +19,9 @@ import java.util.List;
  */
 public interface AdminCategoryService extends IService<Category> {
 
-    List<AdminCategoryQueryRespDTO> queryCategories();
+    List<AdminCategoryTreeRespDTO> queryCategoryTree();
 
-    PageResult<AdminCategoryPageRespDTO> pageCategories(AdminCategoryPageReqDTO categoryPageReqDTO);
+    PageResult<AdminCategoryPageRespDTO> queryCategoryPage(AdminCategoryPageReqDTO categoryPageReqDTO);
 
     AdminCategoryAddRespDTO addCategory(AdminCategoryAddRepDTO categoryAddRepDTO);
 

@@ -9,14 +9,13 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum BookOpStatusEnum {
-    DRAFT(0, "草稿"),
-    ON_SHELF(1, "正常上架"),
-    BANNED(2, "下架封禁");
+    BANNED(0, "下架封禁"),
+    ON_SHELF(1, "正常上架");
 
     private final Integer code;
     private final String description;
 
-    public static BookOpStatusEnum getEnumByCode(Integer code) {
+    public static BookOpStatusEnum getByCode(Integer code) {
         if (code == null) {
             return null;
         }

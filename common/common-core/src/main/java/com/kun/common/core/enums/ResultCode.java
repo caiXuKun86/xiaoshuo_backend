@@ -48,6 +48,9 @@ public enum ResultCode implements IResultCode {
 
     BOOK_NOT_FOUND(30001, "作品不存在或已下架"),
     CHAPTER_NOT_FOUND(30002, "章节不存在或已被作者删除"),
+    BOOK_CANNOT_DELETE(30002, "该书已产生章节记录,删除失败"),
+    CHAPTER_ALREADY_AUDITED(30002, "该章节已完成审核"),
+    CHAPTER_PRE_AWAIT_AUDITING(30002, "请先审核前置章节"),
     CHAPTER_NEED_PURCHASE(30003, "本章节为付费章节，需要解锁后阅读"),
     OSS_CONTENT_FETCH_FAIL(30004, "章节正文加载失败，请重试"),
     PAY_INSUFFICIENT_POINTS(30005, "账户可用积分不足，无法完成兑换"),

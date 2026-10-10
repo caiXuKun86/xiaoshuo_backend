@@ -14,7 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL) // 字段为 null 时不参与 JSON 序列化
-public class BookPageRespDTO implements Serializable {
+public class BookInfoPageRespDTO implements Serializable {
 
     /**
      * 分类主键 ID

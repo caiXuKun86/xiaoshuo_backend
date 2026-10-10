@@ -1,18 +1,21 @@
-package com.kun.service.book.dto.resp;
+package com.kun.service.book.dto.admin.resp;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class BookDetailQueryRespDTO implements Serializable {
+@JsonInclude(JsonInclude.Include.NON_NULL) // 字段为 null 时不参与 JSON 序列化
+public class AdminBookInfoPageRespDTO implements Serializable {
 
     /**
      * 分类主键 ID
@@ -27,7 +30,8 @@ public class BookDetailQueryRespDTO implements Serializable {
     /**
      * 作者Id
      */
-    private Integer authorId;
+    private Long authorId;
+
     /**
      * 作者笔名
      */
@@ -47,10 +51,6 @@ public class BookDetailQueryRespDTO implements Serializable {
      */
     private String coverUrl;
 
-    /**
-     * 作品描述
-     */
-    private String description;
 
     /**
      * 作品标签
@@ -63,6 +63,10 @@ public class BookDetailQueryRespDTO implements Serializable {
     private Integer wordCount;
 
     /**
+     * 状态
+     */
+    private Integer status;
+    /**
      * 连载状态 (0:连载中 1:完结)
      */
     private Integer bookStatus;
@@ -74,23 +78,14 @@ public class BookDetailQueryRespDTO implements Serializable {
     private BigDecimal score;
 
     /**
-     * 打分用户数量
-     */
-    private Integer ratingUserCount;
-
-    /**
      * 收藏数量
      */
     private Integer collectCount;
+    /**
+     * 最新章节名Id
+     */
+    private Long latestChapterId;
 
-    /**
-     * 第一章Id
-     */
-    private Integer firstChapterId;
-    /**
-     * 最新章节Id
-     */
-    private Integer latestChapterId;
     /**
      * 最新章节名
      */
@@ -100,30 +95,16 @@ public class BookDetailQueryRespDTO implements Serializable {
      * 最新章节发布时间
      */
     private Date latestChapterTime;
+    /**
+     * 创建时间 (新增时自动填充)
+     */
+
+    private LocalDateTime createTime;
 
     /**
-     * 用户交互信息
+     * 更新时间 (新增与修改时自动填充)
      */
-    private UserInteract userInteract;
+    private LocalDateTime updateTime;
 
 
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class UserInteract implements Serializable {
-        /**
-         * 是否已加入书架
-         */
-        private Boolean isInBookshelf;
-
-        /**
-         * 读到的最后章节 ID (雪花算法使用 Long)
-         */
-        private Long lastReadChapterId;
-        /**
-         * 读到的最后章节名称
-         */
-        private String lastReadChapterName;
-    }
 }
-

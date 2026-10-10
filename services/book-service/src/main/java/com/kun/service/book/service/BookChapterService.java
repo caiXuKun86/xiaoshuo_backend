@@ -24,4 +24,5 @@ public interface BookChapterService extends IService<BookChapter> {
     ChapterPublishRespDTO publishChapter(ChapterPublishReqDTO chapterPublishReqDTO);
 
     ChapterUpdateRespDTO updateChapter(ChapterUpdateReqDTO chapterUpdateReqDTO,Long chapterId);
+
 }

@@ -3,11 +3,9 @@ package com.kun.service.book.service.admin;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.kun.common.database.page.PageResult;
 import com.kun.service.book.domain.BookInfo;
-import com.kun.service.book.dto.req.BookFilterPageReqDTO;
-import com.kun.service.book.dto.req.BookPublishReqDTO;
-import com.kun.service.book.dto.req.BookRankPageReqDTO;
-import com.kun.service.book.dto.req.BookSearchPageReqDTO;
-import com.kun.service.book.dto.resp.*;
+import com.kun.service.book.dto.admin.req.AdminBookInfoPageReqDTO;
+import com.kun.service.book.dto.admin.resp.AdminBookInfoDetailRespDTO;
+import com.kun.service.book.dto.admin.resp.AdminBookInfoPageRespDTO;
 
 /**
 * @author Lenovo
@@ -16,20 +14,12 @@ import com.kun.service.book.dto.resp.*;
 */
 public interface AdminBookInfoService extends IService<BookInfo> {
 
-    PageResult<BookPageRespDTO> pageBook(BookFilterPageReqDTO bookPageReqDTO);
 
-    BookDetailQueryRespDTO queryBookDetailById(Long id);
+    PageResult<AdminBookInfoPageRespDTO> queryBookInfoPage(AdminBookInfoPageReqDTO bookInfoPageReqDTO);
 
-    BookCatalogQueryRespDTO queryBookCatalogById(Long bookId,String sortOrder);
+    AdminBookInfoDetailRespDTO queryBookInfoDetail(Long bookId);
 
-    BookPublishRespDTO publishBook(BookPublishReqDTO bookPublishReqDTO);
+    void patchBookInfoStatus(Long bookId, Integer status);
 
-    void overBook(Long bookId);
-
-    PageResult<BookPageRespDTO> searchBookPage(BookSearchPageReqDTO bookSearchPageReqDTO);
-
-    PageResult<BookRankPageRespDTO> rankBookPage(BookRankPageReqDTO bookSearchPageReqDTO);
-
-    BookRankHomeSummaryRespDTO queryRankHomeSummary();
-
+    void deleteBookInfo(Long bookId);
 }

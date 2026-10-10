@@ -19,7 +19,7 @@ import com.kun.common.oss.constants.OSSConstants;
 import com.kun.common.redis.constant.RedisKeyConstants;
 import com.kun.common.redis.util.CacheUtil;
 import com.kun.service.book.domain.*;
-import com.kun.service.book.dto.req.BookFilterPageReqDTO;
+import com.kun.service.book.dto.req.BookInfoPageReqDTO;
 import com.kun.service.book.dto.req.BookPublishReqDTO;
 import com.kun.service.book.dto.req.BookRankPageReqDTO;
 import com.kun.service.book.dto.req.BookSearchPageReqDTO;
@@ -62,7 +62,7 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
 
 
     @Override
-    public PageResult<BookPageRespDTO> pageBook(BookFilterPageReqDTO reqDTO) {
+    public PageResult<BookInfoPageRespDTO> queryBookInfoPage(BookInfoPageReqDTO reqDTO) {
         Integer channelId = reqDTO.getChannelId();
         Long categoryId = reqDTO.getCategoryId();
         Integer bookStatus = reqDTO.getBookStatus();
@@ -92,7 +92,7 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
         Page<BookInfo> page = this.page(reqDTO.toPage(), queryWrapper);
 
         return PageResult.of(page, bookInfo -> {
-            BookPageRespDTO dto = new BookPageRespDTO();
+            BookInfoPageRespDTO dto = new BookInfoPageRespDTO();
             BeanUtils.copyProperties(bookInfo, dto);
             if (StringUtils.hasText(bookInfo.getTags())) {
                 dto.setTags(List.of(bookInfo.getTags().split(",")));
@@ -104,8 +104,8 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
     }
 
     @Override
-    public BookDetailQueryRespDTO queryBookDetailById(Long id) {
-        BookDetailQueryRespDTO bookDetailQueryRespDTO = new BookDetailQueryRespDTO();
+    public BookInfoDetailRespDTO queryBookInfoDetail(Long id) {
+        BookInfoDetailRespDTO bookDetailQueryRespDTO = new BookInfoDetailRespDTO();
         String redisKey = String.format(RedisKeyConstants.BOOK_INFO_PREFIX, id);
         BookInfo bookInfo = cacheUtil.queryWithMutex(redisKey, BookInfo.class, () -> this.getById(id), 2L, TimeUnit.HOURS);
         if (bookInfo == null || !bookInfo.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
@@ -115,7 +115,7 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
         bookDetailQueryRespDTO.setTags(List.of(bookInfo.getTags().split(",")));
         Long userId = UserContextHolder.getUserId();
         if (userId == null) {
-            bookDetailQueryRespDTO.setUserInteract(new BookDetailQueryRespDTO.UserInteract(false, null, null));
+            bookDetailQueryRespDTO.setUserInteract(new BookInfoDetailRespDTO.UserInteract(false, null, null));
             return bookDetailQueryRespDTO;
         }
         Result<ShelfDTO> result = shelfFeignClient.getShelfDTO(id,userId);
@@ -123,7 +123,7 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
             throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE, "查找书架信息失败");
         }
         ShelfDTO shelfDTO = result.getData();
-        BookDetailQueryRespDTO.UserInteract userInteract = new BookDetailQueryRespDTO.UserInteract();
+        BookInfoDetailRespDTO.UserInteract userInteract = new BookInfoDetailRespDTO.UserInteract();
         userInteract.setIsInBookshelf(shelfDTO.getIsInBookshelf());
         userInteract.setLastReadChapterId(shelfDTO.getLastReadChapterId());
         userInteract.setLastReadChapterName(shelfDTO.getLastReadChapterName());
@@ -131,7 +131,6 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
         return bookDetailQueryRespDTO;
     }
 
-    @Override
     public BookCatalogQueryRespDTO queryBookCatalogById(Long bookId, String sortOrder) {
         Long userId = UserContextHolder.getUserId();
         BookInfo bookInfo = this.getById(bookId);
@@ -269,7 +268,7 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
     }
 
     @Override
-    public PageResult<BookPageRespDTO> searchBookPage(BookSearchPageReqDTO reqDTO) {
+    public PageResult<BookInfoPageRespDTO> searchBookPage(BookSearchPageReqDTO reqDTO) {
         String keyword = reqDTO.getKeyword();
         if (keyword.isBlank()) {
             throw new BusinessException(ResultCode.SEARCH_KEYWORD_BLANK);
@@ -291,7 +290,7 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
         Page<BookInfo> page = this.page(reqDTO.toPage(), queryWrapper);
 
         return PageResult.of(page, bookInfo -> {
-            BookPageRespDTO dto = new BookPageRespDTO();
+            BookInfoPageRespDTO dto = new BookInfoPageRespDTO();
             BeanUtils.copyProperties(bookInfo, dto);
             if (StringUtils.hasText(bookInfo.getTags())) {
                 dto.setTags(List.of(bookInfo.getTags().split(",")));

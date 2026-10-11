@@ -1,7 +1,7 @@
 package com.kun.service.user.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.kun.api.dto.user.UserPointsUpdateDTO;
+import com.kun.api.dto.user.UserAssetsUpdateDTO;
 import com.kun.service.user.domain.User;
 import com.kun.service.user.dto.req.ChangePasswordReqDTO;
 import com.kun.service.user.dto.req.UserLoginReqDTO;
@@ -34,7 +34,7 @@ public interface UserService extends IService<User> {
 
     void updateUserProfile(UserProfileUpdateReqDTO userProfileUpdateReqDTO);
 
-    void updatePoints(UserPointsUpdateDTO updateDTO);
+    void updatePoints(UserAssetsUpdateDTO updateDTO);
 
     void updateUserAssetOnOrderPaySuccess(PayOrderSuccessEvent event);
 }

@@ -9,7 +9,7 @@ import java.io.Serializable;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class BookChapterQueryRespDTO implements Serializable {
+public class ChapterDetailRespDTO implements Serializable {
 
     /**
      * 章节主键 ID (雪花算法)

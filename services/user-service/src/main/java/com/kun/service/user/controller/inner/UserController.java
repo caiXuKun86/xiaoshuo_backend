@@ -4,8 +4,8 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import com.kun.api.client.UserFeignClient;
 import com.kun.api.dto.user.RegisterWriterDTO;
+import com.kun.api.dto.user.UserAssetsUpdateDTO;
 import com.kun.api.dto.user.UserDTO;
-import com.kun.api.dto.user.UserPointsUpdateDTO;
 import com.kun.common.core.enums.ResultCode;
 import com.kun.common.core.exception.BusinessException;
 import com.kun.common.core.result.Result;
@@ -55,8 +55,8 @@ public class UserController implements UserFeignClient {
     /**
      * 跨服务变更用户积分 (充值到账、章节兑换扣除等)
      */
-    @PostMapping("/points/update")
-    public Result<Boolean> updatePoints(@RequestBody UserPointsUpdateDTO updateDTO) {
+    @PostMapping("/asset/update")
+    public Result<Boolean> updateUserAsset(@RequestBody UserAssetsUpdateDTO updateDTO) {
 
         userService.updatePoints(updateDTO);
         return Result.success(true);

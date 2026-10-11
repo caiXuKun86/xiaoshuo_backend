@@ -16,7 +16,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(description = "跨服务积分变更传输对象")
-public class UserPointsUpdateDTO implements Serializable {
+public class UserAssetsUpdateDTO implements Serializable {
 
     private static final long serialVersionUID = 1L;
 

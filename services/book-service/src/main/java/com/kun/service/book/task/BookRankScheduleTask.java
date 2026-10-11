@@ -9,6 +9,7 @@ import com.kun.service.book.domain.BookInfo;
 import com.kun.service.book.mapper.BookInfoMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.data.redis.core.DefaultTypedTuple;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
@@ -25,11 +26,22 @@ import java.util.function.ToDoubleFunction;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class BookRankScheduleTask {
+public class BookRankScheduleTask implements SmartInitializingSingleton {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final BookInfoMapper bookInfoMapper;
 
+    @Override
+    public void afterSingletonsInstantiated() {
+        log.info("【系统启动预热】开始执行小说排行榜初始化缓存...");
+        try {
+            refreshBookRank();
+            log.info("【系统启动预热】小说排行榜数据初始化完成！");
+        } catch (Exception e) {
+            // 预热异常通常捕获打日志，防止排行榜异常导致整个应用起不来
+            log.error("【系统启动预热】小说排行榜初始化失败", e);
+        }
+    }
     /**
      * 每 60 分钟重算并刷新一次排行榜
      */

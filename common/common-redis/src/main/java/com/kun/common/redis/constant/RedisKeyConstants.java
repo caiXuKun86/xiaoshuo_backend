@@ -45,19 +45,23 @@ public final class RedisKeyConstants {
      */
     public static final String CACHE_BOOK_CATEGORY = "cache:book:category";
     /**
-     * 图书章节目录树缓存 Key: cache:book:catalog:{bookId}
+     * 图书章节目录树缓存 Key: cache:book:catalog:{bookId}:{sortOrder}
      */
-    public static final String CACHE_BOOK_CATALOG = "cache:book:catalog:%s";
+    public static final String CACHE_BOOK_CATALOG = "cache:book:catalog:%s:%s";
     /**
-     * 图书基础元数据缓存 Key: book:info:{bookId}
+     * 图书基础元数据缓存 Key: cache:book:info:{bookId}
      */
-    public static final String BOOK_INFO_PREFIX = "book:info:%s";
+    public static final String BOOK_INFO_PREFIX = "cache:book:info:%s";
 
     /**
      * 章节最新 20 章热门正文缓存 Key: book:chapter:content:{chapterId}
      */
     public static final String BOOK_CHAPTER_CONTENT_PREFIX = "book:chapter:content:";
 
+    /**
+     * 图书分页元数据缓存 Key: cache:book:list:{hash}
+     */
+    public static final String CACHE_BOOK_PAGE = "cache:book:list:%s";
 
 
     /**

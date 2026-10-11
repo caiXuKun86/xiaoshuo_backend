@@ -1,4 +1,4 @@
-package com.kun.service.book.dto.resp;
+package com.kun.service.book.dto.writer.resp;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ChapterUpdateRespDTO implements Serializable {
+public class WriterChapterUpdateRespDTO implements Serializable {
 
 
     @Serial
@@ -22,9 +22,9 @@ public class ChapterUpdateRespDTO implements Serializable {
     private Long chapterId;
 
     /**
-     * 图书Id
+     * 章节名称
      */
-    private Long bookId;
+    private String chapterName;
     /**
      * 序号
      */

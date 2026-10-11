@@ -12,7 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL) // 字段为 null 时不参与 JSON 序列化
-public class CategoryQueryRespDTO implements Serializable {
+public class CategoryTrueRespDTO implements Serializable {
 
     /**
      * 分类主键 ID
@@ -32,6 +32,6 @@ public class CategoryQueryRespDTO implements Serializable {
     /**
      * 子标签
      */
-    private List<CategoryQueryRespDTO> children;
+    private List<CategoryTrueRespDTO> children;
 
 }

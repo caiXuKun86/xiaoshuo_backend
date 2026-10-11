@@ -83,7 +83,7 @@ public class AdminCategoryServiceImpl extends ServiceImpl<CategoryMapper, Catego
         // 1. 业务硬约束：只展示已上架的书籍 (status = 1)
         queryWrapper.eq(status != null, Category::getStatus, status)
                 .eq(channelId != null, Category::getId, channelId)
-                .like(StrUtil.isNotBlank(name), Category::getName, name);
+                .likeRight(StrUtil.isNotBlank(name), Category::getName, name);
 
         if (!StringUtils.hasText(reqDTO.getSortField())) {
             queryWrapper.orderByDesc(Category::getCreateTime);
@@ -109,7 +109,7 @@ public class AdminCategoryServiceImpl extends ServiceImpl<CategoryMapper, Catego
             throw new BusinessException(ResultCode.PARAM_INVALID, "父标签不能为空");
         }
         if (parentId != 0 && !this.lambdaQuery().eq(Category::getId, parentId).exists()) {
-            throw new BusinessException(ResultCode.CATEGORY_NOT_EXISTED, "父标签不存在");
+            throw new BusinessException(ResultCode.CATEGORY_NOT_FOUND, "父标签不存在");
         }
         Category category = BeanUtil.copyProperties(categoryAddRepDTO, Category.class);
         boolean save = this.save(category);
@@ -135,7 +135,7 @@ public class AdminCategoryServiceImpl extends ServiceImpl<CategoryMapper, Catego
             throw new BusinessException(ResultCode.PARAM_INVALID, "父标签不能为空");
         }
         if (parentId != 0 && !this.lambdaQuery().eq(Category::getId, parentId).exists()) {
-            throw new BusinessException(ResultCode.CATEGORY_NOT_EXISTED, "父标签不存在");
+            throw new BusinessException(ResultCode.CATEGORY_NOT_FOUND, "父标签不存在");
         }
         Category category = BeanUtil.copyProperties(categoryUpdateRepDTO, Category.class);
         category.setId(id);
@@ -155,7 +155,7 @@ public class AdminCategoryServiceImpl extends ServiceImpl<CategoryMapper, Catego
         }
         boolean exists = this.lambdaQuery().eq(Category::getId, id).exists();
         if (!exists) {
-            throw new BusinessException(ResultCode.CATEGORY_NOT_EXISTED);
+            throw new BusinessException(ResultCode.CATEGORY_NOT_FOUND);
         }
         boolean update = this.lambdaUpdate().set(status != null, Category::getStatus, status).eq(Category::getId, id).update();
         if (!update) {
@@ -170,7 +170,7 @@ public class AdminCategoryServiceImpl extends ServiceImpl<CategoryMapper, Catego
     public void deleteCategory(Long id) {
         Category category = this.getById(id);
         if (category == null) {
-            throw new BusinessException(ResultCode.CATEGORY_NOT_EXISTED);
+            throw new BusinessException(ResultCode.CATEGORY_NOT_FOUND);
         }
         boolean exists = this.lambdaQuery()
                 .eq(Category::getParentId, id)

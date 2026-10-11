@@ -1,5 +1,6 @@
 package com.kun.common.redis.util;
 
+import cn.hutool.core.lang.TypeReference;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import lombok.RequiredArgsConstructor;
@@ -276,6 +277,68 @@ public class CacheUtil {
             json = stringRedisTemplate.opsForValue().get(key);
             if (StrUtil.isNotBlank(json)) {
                 return JSONUtil.toBean(json, type);
+            }
+            if (json != null) {
+                return null;
+            }
+
+            // 5. 双重检查依然未命中，执行数据库回源查询
+            R r = dbFallback.get();
+
+            // 6. 判空防穿透处理
+            if (r == null) {
+                long nullTtl = DEFAULT_NULL_TTL_SECONDS + ThreadLocalRandom.current().nextLong(30);
+                stringRedisTemplate.opsForValue().set(key, CACHE_NULL_VALUE, nullTtl, TimeUnit.SECONDS);
+                return null;
+            }
+
+            // 7. 写入缓存并防雪崩
+            this.setWithRandomTtl(key, r, ttl, unit, 10);
+            return r;
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("[CacheUtil] 互斥锁等待被中断, key: {}", key);
+            return dbFallback.get();
+        } finally {
+            // 8. 释放锁
+            releaseLock(lockKey, rLock, isLocked);
+        }
+    }
+
+    /**
+     * 防缓存击穿查询模板 (支持泛型复杂实体，如 PageResult<T>)
+     */
+    public <R> R queryWithMutex(String key, TypeReference<R> typeRef, Supplier<R> dbFallback, Long ttl, TimeUnit unit) {
+        // 1. 尝试从缓存获取
+        String json = stringRedisTemplate.opsForValue().get(key);
+        if (StrUtil.isNotBlank(json)) {
+            return JSONUtil.toBean(json, typeRef, false);
+        }
+        if (json != null) {
+            // 命中了防穿透空值
+            return null;
+        }
+
+        // 2. 缓存未命中，尝试获取互斥锁
+        String lockKey = LOCK_PREFIX + key;
+        boolean isLocked = false;
+        RLock rLock = null;
+
+        try {
+            rLock = redissonClient.getLock(lockKey);
+            isLocked = rLock.tryLock(DEFAULT_LOCK_WAIT_MILLIS, DEFAULT_LOCK_LEASE_SECONDS * 1000, TimeUnit.MILLISECONDS);
+
+            // 3. 获取锁失败：休眠重试
+            if (!isLocked) {
+                Thread.sleep(50);
+                return queryWithMutex(key, typeRef, dbFallback, ttl, unit);
+            }
+
+            // 4. 获取锁成功：执行 Double-Check 双重检查
+            json = stringRedisTemplate.opsForValue().get(key);
+            if (StrUtil.isNotBlank(json)) {
+                return JSONUtil.toBean(json, typeRef, false);
             }
             if (json != null) {
                 return null;

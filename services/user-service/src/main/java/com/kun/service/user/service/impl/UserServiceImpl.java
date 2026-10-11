@@ -7,7 +7,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.BCrypt;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.kun.api.dto.user.UserPointsUpdateDTO;
+import com.kun.api.dto.user.UserAssetsUpdateDTO;
 import com.kun.common.core.context.LoginUser;
 import com.kun.common.core.context.UserContextHolder;
 import com.kun.common.core.enums.*;
@@ -307,8 +307,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updatePoints(UserPointsUpdateDTO updateDTO) {
-        Long userId = UserContextHolder.getUserId();
+    public void updatePoints(UserAssetsUpdateDTO updateDTO) {
+        Long userId = updateDTO.getUserId();
+
+
         boolean update = this.lambdaUpdate()
                 .setSql("point_balance = point_balance +" + updateDTO.getBalanceChange())
                 .eq(User::getId, userId)

@@ -2,15 +2,14 @@ package com.kun.service.book.controller;
 
 import com.kun.common.core.result.Result;
 import com.kun.service.book.dto.req.ChapterExchangeReqDTO;
-import com.kun.service.book.dto.req.ChapterPublishReqDTO;
-import com.kun.service.book.dto.req.ChapterUpdateReqDTO;
-import com.kun.service.book.dto.resp.BookChapterQueryRespDTO;
+import com.kun.service.book.dto.resp.ChapterDetailRespDTO;
 import com.kun.service.book.dto.resp.ChapterExchangeRespDTO;
-import com.kun.service.book.dto.resp.ChapterPublishRespDTO;
-import com.kun.service.book.dto.resp.ChapterUpdateRespDTO;
+import com.kun.service.book.dto.resp.ChapterListRespDTO;
 import com.kun.service.book.service.BookChapterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/book/chapter")
@@ -20,10 +19,14 @@ public class BookChapterController {
     private final BookChapterService bookChapterService;
 
 
-
+    @GetMapping("/{bookId}/list")
+    public Result<List<ChapterListRespDTO>> queryBookChapterList(@PathVariable("bookId") Long bookId, @RequestParam(name = "sortOrder", required = false, defaultValue = "ASC") String sortOrder) {
+        List<ChapterListRespDTO> bookCatalogQueryRespDTO = bookChapterService.queryBookChapterList(bookId, sortOrder);
+        return Result.success(bookCatalogQueryRespDTO);
+    }
     @GetMapping("/{bookId}/{chapterId}/content")
-    public Result<BookChapterQueryRespDTO> queryBookChapter(@PathVariable("bookId") Long bookId, @PathVariable("chapterId") Long chapterId) {
-        BookChapterQueryRespDTO bookChapterQueryRespDTO = bookChapterService.queryBookChapter(bookId, chapterId);
+    public Result<ChapterDetailRespDTO> queryChapterDetail(@PathVariable("bookId") Long bookId, @PathVariable("chapterId") Long chapterId) {
+        ChapterDetailRespDTO bookChapterQueryRespDTO = bookChapterService.queryChapterDetail(bookId, chapterId);
         return Result.success(bookChapterQueryRespDTO);
     }
 
@@ -34,17 +37,7 @@ public class BookChapterController {
 
     }
 
-    @PostMapping("/publish")
-    public Result<ChapterPublishRespDTO> publishChapter(@RequestBody ChapterPublishReqDTO chapterPublishReqDTO) {
-        ChapterPublishRespDTO chapterPublishRespDTO = bookChapterService.publishChapter(chapterPublishReqDTO);
-        return Result.success(chapterPublishRespDTO);
-    }
 
-    @PutMapping("/{chapterId}")
-    public Result<ChapterUpdateRespDTO> updateChapter(@RequestBody ChapterUpdateReqDTO chapterUpdateReqDTO, @PathVariable("chapterId") Long chapterId) {
-        ChapterUpdateRespDTO chapterUpdateRespDTO = bookChapterService.updateChapter(chapterUpdateReqDTO,chapterId);
-        return Result.success(chapterUpdateRespDTO);
-    }
 
 
 }

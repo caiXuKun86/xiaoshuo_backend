@@ -1,4 +1,4 @@
-package com.kun.service.book.dto.req;
+package com.kun.service.book.dto.writer.req;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,12 +9,8 @@ import java.io.Serializable;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ChapterUpdateReqDTO implements Serializable {
+public class WriterChapterUpdateReqDTO implements Serializable {
 
-    /**
-     * 所属图书 ID
-     */
-    private Long bookId;
 
 
     /**

@@ -1,16 +1,17 @@
 package com.kun.service.book.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kun.api.client.UserFeignClient;
+import com.kun.api.dto.user.UserAssetsUpdateDTO;
 import com.kun.api.dto.user.UserDTO;
-import com.kun.api.dto.user.UserPointsUpdateDTO;
 import com.kun.common.core.context.UserContextHolder;
-import com.kun.common.core.enums.*;
+import com.kun.common.core.enums.AssetChangeTypeEnum;
+import com.kun.common.core.enums.BookOpStatusEnum;
+import com.kun.common.core.enums.ChapterChargeEnum;
+import com.kun.common.core.enums.ResultCode;
 import com.kun.common.core.exception.BusinessException;
 import com.kun.common.core.result.Result;
 import com.kun.common.oss.template.OssTemplate;
@@ -21,12 +22,9 @@ import com.kun.service.book.domain.BookChapter;
 import com.kun.service.book.domain.BookInfo;
 import com.kun.service.book.domain.UserChapterUnlock;
 import com.kun.service.book.dto.req.ChapterExchangeReqDTO;
-import com.kun.service.book.dto.req.ChapterPublishReqDTO;
-import com.kun.service.book.dto.req.ChapterUpdateReqDTO;
-import com.kun.service.book.dto.resp.BookChapterQueryRespDTO;
+import com.kun.service.book.dto.resp.ChapterDetailRespDTO;
 import com.kun.service.book.dto.resp.ChapterExchangeRespDTO;
-import com.kun.service.book.dto.resp.ChapterPublishRespDTO;
-import com.kun.service.book.dto.resp.ChapterUpdateRespDTO;
+import com.kun.service.book.dto.resp.ChapterListRespDTO;
 import com.kun.service.book.mapper.AuthorMapper;
 import com.kun.service.book.mapper.BookChapterMapper;
 import com.kun.service.book.mapper.BookInfoMapper;
@@ -37,11 +35,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Lenovo
@@ -64,7 +63,7 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
     private final CacheUtil cacheUtil;
 
     @Override
-    public BookChapterQueryRespDTO queryBookChapter(Long bookId, Long chapterId) {
+    public ChapterDetailRespDTO queryChapterDetail(Long bookId, Long chapterId) {
         BookInfo bookInfo = bookInfoMapper.selectById(bookId);
         if (bookInfo == null || !bookInfo.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
             throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
@@ -74,9 +73,9 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
         if (bookChapter == null) {
             throw new BusinessException(ResultCode.CHAPTER_NOT_FOUND);
         }
-        BookChapterQueryRespDTO bookChapterQueryRespDTO = new BookChapterQueryRespDTO();
-        BeanUtil.copyProperties(bookChapter, bookChapterQueryRespDTO);
-        bookChapterQueryRespDTO.setRequiredPoints(null);
+        ChapterDetailRespDTO chapterDetailRespDTO = new ChapterDetailRespDTO();
+        BeanUtil.copyProperties(bookChapter, chapterDetailRespDTO);
+        chapterDetailRespDTO.setRequiredPoints(null);
         BookChapter preChapter = this.lambdaQuery()
                 .eq(BookChapter::getBookId, bookChapter.getBookId())
                 .eq(BookChapter::getChapterIndex, bookChapter.getChapterIndex() - 1)
@@ -90,27 +89,27 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
                 .one();
 
         if (preChapter != null) {
-            bookChapterQueryRespDTO.setPrevChapterId(preChapter.getId());
+            chapterDetailRespDTO.setPrevChapterId(preChapter.getId());
         }
         if (nextChapter != null) {
-            bookChapterQueryRespDTO.setPrevChapterId(nextChapter.getId());
+            chapterDetailRespDTO.setPrevChapterId(nextChapter.getId());
         }
 
         if (Objects.equals(bookChapter.getIsCharge(), ChapterChargeEnum.CHARGE.getCode())) {
             Long userId = UserContextHolder.getUserId();
             if (userId == null) {
-                bookChapterQueryRespDTO.setIsLocked(true);
-                bookChapterQueryRespDTO.setNeedLogin(true);
-                return bookChapterQueryRespDTO;
+                chapterDetailRespDTO.setIsLocked(true);
+                chapterDetailRespDTO.setNeedLogin(true);
+                return chapterDetailRespDTO;
             }
 
             if (!isUnlockChapter(bookInfo, userId, chapterId)) {
-                bookChapterQueryRespDTO.setIsLocked(true);
-                bookChapterQueryRespDTO.setNeedLogin(false);
-                bookChapterQueryRespDTO.setRequiredPoints(bookChapter.getRequiredPoints());
-                return bookChapterQueryRespDTO;
+                chapterDetailRespDTO.setIsLocked(true);
+                chapterDetailRespDTO.setNeedLogin(false);
+                chapterDetailRespDTO.setRequiredPoints(bookChapter.getRequiredPoints());
+                return chapterDetailRespDTO;
             } else {
-                bookChapterQueryRespDTO.setIsLocked(true);
+                chapterDetailRespDTO.setIsLocked(true);
             }
         }
         String content = null;
@@ -122,8 +121,8 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
         if (StrUtil.isBlank(content)) {
             throw new BusinessException(ResultCode.OSS_CONTENT_FETCH_FAIL);
         }
-        bookChapterQueryRespDTO.setContent(content);
-        return bookChapterQueryRespDTO;
+        chapterDetailRespDTO.setContent(content);
+        return chapterDetailRespDTO;
 
 
     }
@@ -178,161 +177,29 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public ChapterPublishRespDTO publishChapter(ChapterPublishReqDTO chapterPublishReqDTO) {
-        Long bookId = chapterPublishReqDTO.getBookId();
-        Integer chapterIndex = chapterPublishReqDTO.getChapterIndex();
-        String chapterName = chapterPublishReqDTO.getChapterName();
-        String content = chapterPublishReqDTO.getContent();
-        Integer isCharge = chapterPublishReqDTO.getIsCharge();
-        Integer requiredPoints = chapterPublishReqDTO.getRequiredPoints();
-
-        if (ObjUtil.hasNull(chapterIndex, chapterName, isCharge)) {
-            throw new BusinessException(ResultCode.PARAM_INVALID);
-        }
-        if (StrUtil.isBlank(chapterName)) {
-            throw new BusinessException(ResultCode.PARAM_INVALID, "章节名称不能为空");
-        }
-        if (StrUtil.isBlank(content)) {
-            throw new BusinessException(ResultCode.PARAM_INVALID, "章节正文不能为空");
-        }
-        //收费必须传入requiredPoints
-        if (isCharge == 1 && requiredPoints == null) {
-            throw new BusinessException(ResultCode.PARAM_INVALID, "付费章节必须指定消费积分");
-        }
-        Long userId = UserContextHolder.getUserId();
-        Author author = authorMapper.selectOne(new LambdaQueryWrapper<Author>().eq(Author::getUserId, userId));
-        if (author == null) {
-            throw new BusinessException(ResultCode.NOT_AN_AUTHOR);
-        }
-        BookInfo bookInfo = bookInfoMapper.selectById(bookId);
-        if (bookInfo == null || !bookInfo.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
-            throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
-        }
-        if (!Objects.equals(bookInfo.getAuthorId(), author.getId())) {
-            throw new BusinessException(ResultCode.AUTHOR_NOT_PERMITTED);
-        }
-        if (bookInfo.getStatus().equals(BookStatusEnum.FINISHED.getCode())) {
-            throw new BusinessException(ResultCode.BOOK_IS_OVER);
-        }
-        Long count = this.lambdaQuery()
-                .eq(BookChapter::getBookId, bookId)
-                .eq(BookChapter::getChapterIndex, chapterIndex)
-                .count();
-        if (count > 0) {
-            throw new BusinessException(ResultCode.ALREADY_PUBLISH_INDEX);
-        }
-        String ossPath;
-        try {
-            ossPath = ossTemplate.uploadChapterContent(String.format(OssTemplate.UPLOAD_CHAPTER, bookId, chapterIndex), content);
-        } catch (Exception e) {
-            throw new BusinessException(ResultCode.UPLOAD_CONTENT_FAILED);
-        }
-
-        BookChapter bookChapter = new BookChapter();
-        BeanUtil.copyProperties(chapterPublishReqDTO, bookChapter);
-        bookChapter.setOssPath(ossPath);
-        int wordCount = computeContentLength(content);
-        bookChapter.setWordCount(wordCount);
-        bookChapter.setParagraphCount(countParagraphs(content));
-        bookChapter.setStatus(ChapterStatusEnum.AUDITING.getCode());
-        boolean save = this.save(bookChapter);
-        if (!save) {
-            throw new BusinessException(ResultCode.OPERATION_FAILED);
-        }
-
-        ChapterPublishRespDTO dto = new ChapterPublishRespDTO();
-        BeanUtil.copyProperties(bookChapter, dto);
-        dto.setPublishTime(LocalDateTime.now());
-        return dto;
-
-
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    @Override
-    public ChapterUpdateRespDTO updateChapter(ChapterUpdateReqDTO chapterUpdateReqDTO, Long chapterId) {
-        Long bookId = chapterUpdateReqDTO.getBookId();
-        String chapterName = chapterUpdateReqDTO.getChapterName();
-        String content = chapterUpdateReqDTO.getContent();
-        if (bookId == null) {
-            throw new BusinessException(ResultCode.PARAM_INVALID);
-        }
-        Long userId = UserContextHolder.getUserId();
-        Author author = authorMapper.selectOne(new LambdaQueryWrapper<Author>().eq(Author::getUserId, userId));
-        if (author == null) {
-            throw new BusinessException(ResultCode.NOT_AN_AUTHOR);
-        }
-        BookInfo bookInfo = bookInfoMapper.selectById(bookId);
-        if (bookInfo == null || !bookInfo.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
-            throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
-        }
-        if (!Objects.equals(bookInfo.getAuthorId(), author.getId())) {
-            throw new BusinessException(ResultCode.AUTHOR_NOT_PERMITTED);
-        }
-        BookChapter bookChapter = this.getById(chapterId);
-
-        if (bookChapter == null) {
-            throw new BusinessException(ResultCode.CHAPTER_NOT_FOUND);
-        }
-
-        int newCount = computeContentLength(content);
-        int newParagraphCount = countParagraphs(content);
-
-        boolean update = this.lambdaUpdate()
-                .eq(BookChapter::getId, chapterId)
-                .set(StrUtil.isNotBlank(chapterName), BookChapter::getChapterName, chapterName)
-                .set(StrUtil.isNotBlank(content), BookChapter::getWordCount, newCount)
-                .set(StrUtil.isNotBlank(content), BookChapter::getParagraphCount, newParagraphCount)
-                .update();
-        if (!update) {
-            throw new BusinessException(ResultCode.OPERATION_FAILED);
-        }
-
-        if (StrUtil.isNotBlank(content)) {
-            int delta = newCount - bookChapter.getWordCount();
-            int update1 = bookInfoMapper.update(new LambdaUpdateWrapper<BookInfo>()
-                    .eq(BookInfo::getId, bookId)
-                    .setSql("word_count = word_count + " + delta)
-            );
-            if (update1 < 1) {
-                throw new BusinessException(ResultCode.OPERATION_FAILED);
-
+    public List<ChapterListRespDTO> queryBookChapterList(Long bookId, String sortOrder) {
+        String key = String.format(RedisKeyConstants.CACHE_BOOK_CATALOG, bookId, sortOrder);
+        return cacheUtil.queryListWithMutex(key, ChapterListRespDTO.class, () -> {
+            BookInfo bookInfo = bookInfoMapper.selectById(bookId);
+            if (bookInfo == null || !bookInfo.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
+                throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
             }
-            try {
-                ossTemplate.uploadChapterContent(String.format(OssTemplate.UPLOAD_CHAPTER, bookId, bookChapter.getChapterIndex()), content);
-            } catch (Exception e) {
-                throw new BusinessException(ResultCode.UPLOAD_CONTENT_FAILED);
+            if (!sortOrder.equals("ASC") && !sortOrder.equals("DESC")) {
+                throw new BusinessException(ResultCode.PARAM_INVALID);
             }
-        }
-        if (StrUtil.isNotBlank(chapterName) && Objects.equals(bookInfo.getLatestChapterId(), chapterId)) {
-            int update1 = bookInfoMapper.update(
-                    new LambdaUpdateWrapper<BookInfo>()
-                            .eq(BookInfo::getId, bookId)
-                            .set(BookInfo::getLatestChapterName, chapterName)
-            );
-            if (update1 < 1) {
-                throw new BusinessException(ResultCode.OPERATION_FAILED);
+            List<BookChapter> bookChapterList = this.lambdaQuery().eq(BookChapter::getBookId, bookInfo.getId())
+                    .orderBy(true, sortOrder.equals("ASC"), BookChapter::getChapterIndex)
+                    .list();
+            return BeanUtil.copyToList(bookChapterList, ChapterListRespDTO.class);
+        }, 2L, TimeUnit.HOURS);
 
-            }
-
-        }
-        cacheUtil.delete(String.format(RedisKeyConstants.CACHE_BOOK_CATALOG, bookId));
-        cacheUtil.delete(String.format(RedisKeyConstants.BOOK_INFO_PREFIX, bookId));
-        ChapterUpdateRespDTO dto = new ChapterUpdateRespDTO();
-        dto.setBookId(bookId);
-        dto.setChapterId(chapterId);
-        dto.setChapterIndex(bookChapter.getChapterIndex());
-        dto.setWordCount(newCount);
-        dto.setUpdateTime(LocalDateTime.now());
-        return dto;
 
     }
 
 
     private void doExchangeChapter(long userId, UserDTO userDTO, BookChapter bookChapter, BookInfo bookInfo) {
         // 1. 组装远程扣积分参数
-        UserPointsUpdateDTO updateDTO = new UserPointsUpdateDTO();
+        UserAssetsUpdateDTO updateDTO = new UserAssetsUpdateDTO();
         updateDTO.setUserId(userId);
         updateDTO.setBalanceChange(-bookChapter.getRequiredPoints()); // 注意：扣减积分通常是负数
         updateDTO.setBalanceBefore(userDTO.getPointBalance());
@@ -344,7 +211,7 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
                 bookInfo.getBookName(), bookChapter.getChapterIndex(), bookChapter.getChapterName()));
 
         // 2. 步骤一：远程调用扣减积分（不在本地事务内）
-        Result<Boolean> booleanResult = userFeignClient.updatePoints(updateDTO);
+        Result<Boolean> booleanResult = userFeignClient.updateUserAsset(updateDTO);
         if (booleanResult == null || booleanResult.getCode() != 200 || !Boolean.TRUE.equals(booleanResult.getData())) {
             throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE, "用户积分扣减失败");
         }
@@ -382,7 +249,7 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
      * 失败回滚补偿逻辑
      */
     private void compensateRefundPoints(long userId, BookChapter bookChapter, BookInfo bookInfo) {
-        UserPointsUpdateDTO refundDTO = new UserPointsUpdateDTO();
+        UserAssetsUpdateDTO refundDTO = new UserAssetsUpdateDTO();
         refundDTO.setUserId(userId);
         refundDTO.setBalanceChange(bookChapter.getRequiredPoints()); // 加回积分
         refundDTO.setBizId(bookChapter.getId());
@@ -390,7 +257,7 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
         refundDTO.setTitle(String.format("退还<< %s >>第 %d 章兑换积分", bookInfo.getBookName(), bookChapter.getChapterIndex()));
 
         // 1. 显式接收远程调用结果
-        Result<Boolean> result = userFeignClient.updatePoints(refundDTO);
+        Result<Boolean> result = userFeignClient.updateUserAsset(refundDTO);
 
         // 2. 严谨校验：判空、状态码、返回的业务布尔值
         if (result == null || result.getCode() != 200 || result.getData() != true) {

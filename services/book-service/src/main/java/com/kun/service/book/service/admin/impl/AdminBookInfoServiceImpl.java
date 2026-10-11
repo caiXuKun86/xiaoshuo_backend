@@ -1,6 +1,7 @@
 package com.kun.service.book.service.admin.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -10,10 +11,12 @@ import com.kun.common.core.enums.ResultCode;
 import com.kun.common.core.exception.BusinessException;
 import com.kun.common.database.page.PageResult;
 import com.kun.service.book.domain.BookInfo;
+import com.kun.service.book.domain.Category;
 import com.kun.service.book.dto.admin.req.AdminBookInfoPageReqDTO;
 import com.kun.service.book.dto.admin.resp.AdminBookInfoDetailRespDTO;
 import com.kun.service.book.dto.admin.resp.AdminBookInfoPageRespDTO;
 import com.kun.service.book.mapper.BookInfoMapper;
+import com.kun.service.book.mapper.CategoryMapper;
 import com.kun.service.book.service.admin.AdminBookInfoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -33,6 +36,7 @@ import java.util.List;
 @Service
 public class AdminBookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> implements AdminBookInfoService {
 
+    private final CategoryMapper categoryMapper;
 
     @Override
     public PageResult<AdminBookInfoPageRespDTO> queryBookInfoPage(AdminBookInfoPageReqDTO reqDTO) {
@@ -49,8 +53,8 @@ public class AdminBookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookIn
         LambdaQueryWrapper<BookInfo> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(status != null, BookInfo::getStatus, status)
                 .eq(bookStatus != null, BookInfo::getBookStatus, bookStatus)
-                .like(StrUtil.isNotBlank(authorName), BookInfo::getAuthorName, authorName)
-                .like(StrUtil.isNotBlank(bookName), BookInfo::getBookName, bookName)
+                .likeRight(StrUtil.isNotBlank(authorName), BookInfo::getAuthorName, authorName)
+                .likeRight(StrUtil.isNotBlank(bookName), BookInfo::getBookName, bookName)
                 .ge(minWordCount != null, BookInfo::getWordCount, minWordCount)
                 .le(maxWordCount != null, BookInfo::getWordCount, maxWordCount);
 
@@ -58,8 +62,13 @@ public class AdminBookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookIn
             // 精确匹配二级分类
             queryWrapper.eq(BookInfo::getCategoryId, categoryId);
         } else if (channelId != null && channelId > 0) {
+            List<Long> childrenCategoryIds = categoryMapper.selectList(new LambdaQueryWrapper<Category>()
+                            .select(Category::getId)
+                            .eq(Category::getParentId, channelId)
+//                    .eq(Category::getStatus, CategoryStatusEnum.SHOW)
+            ).stream().map(Category::getId).toList();
             // 只选了一级频道 (例如男频/女频)，使用子查询匹配该频道下的所有子分类
-            queryWrapper.inSql(BookInfo::getCategoryId, "SELECT id FROM category WHERE parent_id = " + channelId);
+            queryWrapper.in(CollUtil.isNotEmpty(childrenCategoryIds),BookInfo::getCategoryId, childrenCategoryIds);
         }
 
 
@@ -87,7 +96,7 @@ public class AdminBookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookIn
     public AdminBookInfoDetailRespDTO queryBookInfoDetail(Long bookId) {
         AdminBookInfoDetailRespDTO bookInfoDetailRespDTO = new AdminBookInfoDetailRespDTO();
         BookInfo bookInfo = this.getById(bookId);
-        if (bookInfo == null || !bookInfo.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
+        if (bookInfo == null) {
             throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
         }
         BeanUtil.copyProperties(bookInfo, bookInfoDetailRespDTO);
@@ -111,7 +120,6 @@ public class AdminBookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookIn
                 .update();
         if (!update) {
             throw new BusinessException(ResultCode.OPERATION_FAILED);
-
         }
     }
 

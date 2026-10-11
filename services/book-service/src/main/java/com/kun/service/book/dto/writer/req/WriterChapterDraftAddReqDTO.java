@@ -1,20 +1,15 @@
-package com.kun.service.book.dto.req;
+package com.kun.service.book.dto.writer.req;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.io.Serial;
 import java.io.Serializable;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ChapterPublishReqDTO implements Serializable {
-
-
-    @Serial
-    private static final long serialVersionUID = 1L;
+public class WriterChapterDraftAddReqDTO implements Serializable {
 
 
     /**
@@ -31,18 +26,17 @@ public class ChapterPublishReqDTO implements Serializable {
      * 章节标题 (如"第1章 陨落的天才")
      */
     private String chapterName;
+
     /**
      * 内容
      */
     private String content;
-
     /**
      * 是否付费章节 (0:免费 1:收费)
      */
     private Integer isCharge;
-
     /**
-     * 兑换本章所需积分
+     * 需要的积分数量
      */
     private Integer requiredPoints;
 

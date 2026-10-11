@@ -4,7 +4,6 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kun.common.core.enums.ChapterChargeEnum;
@@ -13,7 +12,6 @@ import com.kun.common.core.enums.ResultCode;
 import com.kun.common.core.exception.BusinessException;
 import com.kun.common.database.page.PageResult;
 import com.kun.common.oss.template.OssTemplate;
-import com.kun.common.redis.constant.RedisKeyConstants;
 import com.kun.common.redis.util.CacheUtil;
 import com.kun.service.book.domain.BookChapter;
 import com.kun.service.book.domain.BookInfo;
@@ -25,12 +23,13 @@ import com.kun.service.book.dto.admin.resp.AdminChapterPageRespDTO;
 import com.kun.service.book.mapper.BookChapterMapper;
 import com.kun.service.book.mapper.BookInfoMapper;
 import com.kun.service.book.service.admin.AdminBookChapterService;
+import com.kun.service.book.service.admin.stragety.ChapterStatusHandler;
+import com.kun.service.book.service.admin.stragety.ChapterStatusHandlerFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-
-import java.time.LocalDateTime;
 
 /**
  * @author Lenovo
@@ -46,7 +45,7 @@ public class AdminBookChapterServiceImpl extends ServiceImpl<BookChapterMapper, 
     private final BookInfoMapper bookInfoMapper;
     private final OssTemplate ossTemplate;
     private final CacheUtil cacheUtil;
-
+    private final ChapterStatusHandlerFactory chapterStatusHandlerFactory;
     @Override
     public PageResult<AdminChapterPageRespDTO> queryChapterPage(AdminChapterPageReqDTO reqDTO) {
         Integer status = reqDTO.getStatus();
@@ -58,17 +57,15 @@ public class AdminBookChapterServiceImpl extends ServiceImpl<BookChapterMapper, 
             throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
         }
 
-
         LambdaQueryWrapper<BookChapter> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(status != null, BookChapter::getStatus, status)
                 .eq(isCharge != null, BookChapter::getIsCharge, isCharge)
                 .eq(bookId != null, BookChapter::getBookId, bookId)
-                .like(StrUtil.isNotBlank(chapterName), BookChapter::getChapterName, chapterName);
+                .likeRight(StrUtil.isNotBlank(chapterName), BookChapter::getChapterName, chapterName);
 
-
-        // 5. 排序规则：若未传自定义排序，默认按更新时间倒序
+        // 5. 排序规则：若未传自定义排序，默认按发布时间倒序
         if (!StringUtils.hasText(reqDTO.getSortField())) {
-            queryWrapper.orderByDesc(BookChapter::getCreateTime);
+            queryWrapper.orderByDesc(BookChapter::getPublishTime);
         }
 
         // 6. 执行分页查询
@@ -102,40 +99,22 @@ public class AdminBookChapterServiceImpl extends ServiceImpl<BookChapterMapper, 
     }
 
     @Override
-    public void patchChapterStatus(Long chapterId) {
+    @Transactional(rollbackFor = Exception.class)
+    public void patchChapterStatus(Long chapterId, Integer status) {
+        ChapterStatusEnum statusEnum = ChapterStatusEnum.getByCode(status);
+        if(statusEnum ==null){
+            throw new BusinessException(ResultCode.PARAM_INVALID,"状态不存在");
+        }
 
         BookChapter bookChapter = this.getById(chapterId);
         if (bookChapter == null) {
             throw new BusinessException(ResultCode.CHAPTER_NOT_FOUND);
         }
-        if (!bookChapter.getStatus().equals(ChapterStatusEnum.AUDITING.getCode())) {
-            throw new BusinessException(ResultCode.CHAPTER_ALREADY_AUDITED);
-        }
-        Long bookId = bookChapter.getBookId();
-        boolean exists = this.lambdaQuery()
-                .eq(BookChapter::getBookId, bookId)
-                .eq(BookChapter::getStatus, ChapterStatusEnum.AUDITING.getCode())
-                .le(BookChapter::getChapterIndex, bookChapter.getChapterIndex())
-                .exists();
-        if (exists) {
-            throw new BusinessException(ResultCode.CHAPTER_PRE_AWAIT_AUDITING);
-        }
-        int update = bookInfoMapper.update(
-                new LambdaUpdateWrapper<BookInfo>()
-                        .eq(BookInfo::getId, bookId)
-                        .setSql("word_count=word_count+" + bookChapter.getWordCount())
-                        .set(BookInfo::getLatestChapterId, bookChapter.getId())
-                        .set(BookInfo::getLatestChapterName, bookChapter.getChapterName())
-                        .set(BookInfo::getLatestChapterTime, LocalDateTime.now())
-        );
-        if (update < 1) {
-            throw new BusinessException(ResultCode.OPERATION_FAILED);
-        }
-        cacheUtil.delete(String.format(RedisKeyConstants.CACHE_BOOK_CATALOG, bookId));
-        cacheUtil.delete(String.format(RedisKeyConstants.BOOK_INFO_PREFIX, bookId));
-
+        ChapterStatusHandler chapterStatusHandler = chapterStatusHandlerFactory.getHandler(status);
+        chapterStatusHandler.handle(bookChapter,null);
 
     }
+
 
     @Override
     public AdminChapterBatchSetChargeRespDTO setChapterChargeBatch(AdminChapterBatchSetChargeReqDTO chapterBatchSetChargeReqDTO) {
@@ -159,11 +138,26 @@ public class AdminBookChapterServiceImpl extends ServiceImpl<BookChapterMapper, 
                 .ge(BookChapter::getChapterIndex, startChapterIndex)
                 .le(endChapterIndex != null, BookChapter::getChapterIndex, endChapterIndex));
 
-        if (count<1) {
+        if (count < 1) {
             throw new BusinessException(ResultCode.OPERATION_FAILED);
         }
         return new AdminChapterBatchSetChargeRespDTO(count);
 
+    }
+
+    @Override
+    public void deleteChapter(Long chapterId) {
+        BookChapter bookChapter = this.getById(chapterId);
+        if (bookChapter == null) {
+            throw new BusinessException(ResultCode.CHAPTER_NOT_FOUND);
+        }
+        if (!bookChapter.getStatus().equals(ChapterStatusEnum.DRAFT.getCode())) {
+            throw new BusinessException(ResultCode.CHAPTER_CANNOT_EDIT, "只能删除草稿章节");
+        }
+        boolean delete = this.removeById(chapterId);
+        if (!delete) {
+            throw new BusinessException(ResultCode.OPERATION_FAILED, "删除失败");
+        }
     }
 
 

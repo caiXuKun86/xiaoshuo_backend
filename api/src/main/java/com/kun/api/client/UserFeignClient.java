@@ -2,8 +2,8 @@ package com.kun.api.client;
 
 import com.kun.api.client.fallback.UserFeignClientFallbackFactory;
 import com.kun.api.dto.user.RegisterWriterDTO;
+import com.kun.api.dto.user.UserAssetsUpdateDTO;
 import com.kun.api.dto.user.UserDTO;
-import com.kun.api.dto.user.UserPointsUpdateDTO;
 import com.kun.common.core.result.Result;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
@@ -29,8 +29,8 @@ public interface UserFeignClient {
     /**
      * 跨服务变更用户积分 (充值到账、章节兑换扣除等)
      */
-    @PostMapping("/inner/user/points/update")
-    Result<Boolean> updatePoints(@RequestBody UserPointsUpdateDTO updateDTO);
+    @PostMapping("/inner/user/asset/update")
+    Result<Boolean> updateUserAsset(@RequestBody UserAssetsUpdateDTO updateDTO);
 
     /**
      * 更新作家

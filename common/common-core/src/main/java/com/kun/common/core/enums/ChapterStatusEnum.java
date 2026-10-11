@@ -9,9 +9,23 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum ChapterStatusEnum {
+    DRAFT(0, "草稿"),
     AUDITING(1, "待审核"),
     PUBLISHED(2, "已发布");
 
     private final Integer code;
     private final String description;
+
+    public static ChapterStatusEnum getByCode(Integer code){
+        if(code==null){
+            return null;
+        }
+        for (ChapterStatusEnum value : ChapterStatusEnum.values()) {
+            if(value.getCode().equals(code)){
+                return value;
+            }
+        }
+        return null;
+    }
+
 }

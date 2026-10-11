@@ -1,4 +1,4 @@
-package com.kun.service.book.dto.resp;
+package com.kun.service.book.dto.writer.resp;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -12,7 +12,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class BookPublishRespDTO implements Serializable {
+public class WriterBookPublishRespDTO implements Serializable {
 
 
     @Serial

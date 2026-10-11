@@ -42,28 +42,33 @@ public enum ResultCode implements IResultCode {
     INSUFFICIENT_POINTS(20006, "可用积分余额不足"),
 
     // ==================== 30000 ~ 39999 图书与内容服务 (Book) ====================
-    CATEGORY_NOT_EXISTED(30012, "分类不存在"),
-    CATEGORY_SUB_EXISTED(30012, "删除失败,分类下存在子分类"),
-    CATEGORY_BOOK_EXISTED(30012, "分类不存在,分类下存在图书"),
-
-    BOOK_NOT_FOUND(30001, "作品不存在或已下架"),
-    CHAPTER_NOT_FOUND(30002, "章节不存在或已被作者删除"),
-    BOOK_CANNOT_DELETE(30002, "该书已产生章节记录,删除失败"),
-    CHAPTER_ALREADY_AUDITED(30002, "该章节已完成审核"),
-    CHAPTER_PRE_AWAIT_AUDITING(30002, "请先审核前置章节"),
-    CHAPTER_NEED_PURCHASE(30003, "本章节为付费章节，需要解锁后阅读"),
+    //通用
+    CATEGORY_NOT_FOUND(30001, "分类不存在"),
+    BOOK_NOT_FOUND(30002, "作品不存在或已下架"),
+    CHAPTER_NOT_FOUND(30003, "章节不存在或已被作者删除"),
     OSS_CONTENT_FETCH_FAIL(30004, "章节正文加载失败，请重试"),
     PAY_INSUFFICIENT_POINTS(30005, "账户可用积分不足，无法完成兑换"),
     CHAPTER_ALREADY_UNLOCKED(30006, "该章节已解锁，无需重复购买"),
     PAN_NAME_ALREADY_EXISTED(30007, "笔名已存在"),
     WRITER_ALREADY_REGISTER(30008, "您已经是认证作家"),
-    NOT_AN_AUTHOR(30009, "非作家"),
-    AUTHOR_BANNED(30010, "您已被封禁"),
-    ALREADY_HAVE_BOOK(30011, "书名重复"),
-    AUTHOR_NOT_PERMITTED(30013, "无权修改或操作他人作品与章节"),
-    UPLOAD_CONTENT_FAILED(30014, "内容上传失败,请重试"),
-    ALREADY_PUBLISH_INDEX(30015, "您已发送过本章节"),
-    BOOK_IS_OVER(30016, "已完结,不支持发布新章节"),
+    AUTHOR_BANNED(30009, "您已被封禁"),
+
+    //作家专属
+    BOOK_NAME_REPEAT(31001, "书名重复"),
+    CHAPTER_ALREADY_PUBLISH(31002, "您已发送过本章节"),
+    CHAPTER_CANNOT_EDIT(31003, "无法编辑本章节"),
+    AUTHOR_NOT_PERMITTED(31004, "无权修改或操作他人作品与章节"),
+    UPLOAD_CONTENT_FAILED(31005, "内容上传失败,请重试"),
+    BOOK_IS_OVER(31016, "已完结,不支持发布新章节"),
+    //管理端专属
+
+    BOOK_CANNOT_DELETE(32001, "该书已产生章节记录,删除失败"),
+    CATEGORY_SUB_EXISTED(32002, "分类删除失败,分类下存在子分类"),
+    CATEGORY_BOOK_EXISTED(32003, "分类删除失败,分类下存在图书"),
+    CHAPTER_ALREADY_AUDITED(32004, "该章节已完成审核"),
+    CHAPTER_PRE_AWAIT_AUDITING(32005, "请先审核前置章节"),
+
+
 
     // ==================== 40000 ~ 49999 进度与书架服务 (Shelf) ====================
     SHELF_ALREADY_EXISTS(40001, "该书已存在于您的书架中"),

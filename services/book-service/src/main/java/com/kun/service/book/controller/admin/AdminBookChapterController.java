@@ -34,14 +34,19 @@ public class AdminBookChapterController {
     }
 
     @PatchMapping("/{chapterId}/status")
-    public Result<Void> patchChapterStatus(@PathVariable Long chapterId) {
-        bookChapterService.patchChapterStatus(chapterId);
+    public Result<Void> patchChapterStatus(@PathVariable Long chapterId,Integer status) {
+        bookChapterService.patchChapterStatus(chapterId,status);
         return Result.success();
     }
 
     @GetMapping("/batch-charge")
     public Result<AdminChapterBatchSetChargeRespDTO> setChapterChargeBatch(AdminChapterBatchSetChargeReqDTO chapterBatchSetChargeReqDTO) {
         AdminChapterBatchSetChargeRespDTO chapterBatchSetChargeRespDTO = bookChapterService.setChapterChargeBatch(chapterBatchSetChargeReqDTO);
+        return Result.success(chapterBatchSetChargeRespDTO);
+    }
+    @DeleteMapping("/{chapterId}")
+    public Result<Void> deleteChapter(@PathVariable Long chapterId){
+        bookChapterService.deleteChapter(chapterId);
         return Result.success();
 
     }

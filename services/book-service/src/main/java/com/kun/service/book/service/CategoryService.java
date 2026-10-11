@@ -2,7 +2,7 @@ package com.kun.service.book.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.kun.service.book.domain.Category;
-import com.kun.service.book.dto.resp.CategoryQueryRespDTO;
+import com.kun.service.book.dto.resp.CategoryTrueRespDTO;
 
 import java.util.List;
 
@@ -13,5 +13,5 @@ import java.util.List;
 */
 public interface CategoryService extends IService<Category> {
 
-    List<CategoryQueryRespDTO> queryCategories();
+    List<CategoryTrueRespDTO> queryCategoryTree();
 }

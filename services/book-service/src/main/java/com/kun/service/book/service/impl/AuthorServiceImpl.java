@@ -101,10 +101,8 @@ public class AuthorServiceImpl extends ServiceImpl<AuthorMapper, Author> impleme
         author.setUserId(userId);
         author.setPenName(penName);
         author.setStatus(AuthorStatusTypeEnum.NORMAL.getCode());
-
         author.setAvatar(userDTOResult.getData().getAvatar());
         author.setIntro(intro);
-        author.setStatus(AuthorStatusTypeEnum.FORBIDDEN.getCode());
         boolean save = this.save(author);
         if (!save) {
             // 1. 显式接收远程调用结果

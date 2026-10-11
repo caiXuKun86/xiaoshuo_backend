@@ -21,7 +21,9 @@ public interface AdminBookChapterService extends IService<BookChapter> {
 
     AdminChapterDetailRespDTO queryChapterDetail(Long chapterId);
 
-    void patchChapterStatus(Long chapterId);
+    void patchChapterStatus(Long chapterId,Integer status);
 
     AdminChapterBatchSetChargeRespDTO setChapterChargeBatch(AdminChapterBatchSetChargeReqDTO chapterBatchSetChargeReqDTO);
+
+    void deleteChapter(Long chapterId);
 }

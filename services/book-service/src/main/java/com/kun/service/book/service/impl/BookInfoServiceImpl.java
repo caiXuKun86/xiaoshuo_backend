@@ -2,29 +2,33 @@ package com.kun.service.book.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.util.ObjUtil;
-import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONUtil;
+import cn.hutool.core.lang.TypeReference;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kun.api.client.ShelfFeignClient;
 import com.kun.api.dto.shelf.ShelfDTO;
 import com.kun.common.core.context.UserContextHolder;
-import com.kun.common.core.enums.*;
+import com.kun.common.core.enums.BookOpStatusEnum;
+import com.kun.common.core.enums.BookRankTypeEnum;
+import com.kun.common.core.enums.CategoryStatusEnum;
+import com.kun.common.core.enums.ResultCode;
 import com.kun.common.core.exception.BusinessException;
 import com.kun.common.core.result.Result;
 import com.kun.common.database.page.PageResult;
-import com.kun.common.oss.constants.OSSConstants;
 import com.kun.common.redis.constant.RedisKeyConstants;
 import com.kun.common.redis.util.CacheUtil;
-import com.kun.service.book.domain.*;
+import com.kun.service.book.domain.BookInfo;
+import com.kun.service.book.domain.Category;
 import com.kun.service.book.dto.req.BookInfoPageReqDTO;
-import com.kun.service.book.dto.req.BookPublishReqDTO;
 import com.kun.service.book.dto.req.BookRankPageReqDTO;
 import com.kun.service.book.dto.req.BookSearchPageReqDTO;
-import com.kun.service.book.dto.resp.*;
-import com.kun.service.book.mapper.*;
+import com.kun.service.book.dto.resp.BookInfoDetailRespDTO;
+import com.kun.service.book.dto.resp.BookInfoPageRespDTO;
+import com.kun.service.book.dto.resp.BookRankHomeSummaryRespDTO;
+import com.kun.service.book.dto.resp.BookRankPageRespDTO;
+import com.kun.service.book.mapper.BookInfoMapper;
+import com.kun.service.book.mapper.CategoryMapper;
 import com.kun.service.book.service.BookInfoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -32,14 +36,11 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 /**
  * @author Lenovo
@@ -51,18 +52,33 @@ import java.util.stream.Collectors;
 @Service
 public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> implements BookInfoService {
     private final StringRedisTemplate stringRedisTemplate;
-    private final BookChapterMapper bookChapterMapper;
 
-    private final UserChapterUnlockMapper userChapterUnlockMapper;
 
     private final ShelfFeignClient shelfFeignClient;
     private final CacheUtil cacheUtil;
-    private final AuthorMapper authorMapper;
     private final CategoryMapper categoryMapper;
 
 
     @Override
     public PageResult<BookInfoPageRespDTO> queryBookInfoPage(BookInfoPageReqDTO reqDTO) {
+        boolean enableCache = reqDTO.getPageNum() <= 5;
+        String cacheKey = reqDTO.generateCacheKey();
+        String hashKey =String.format(RedisKeyConstants.CACHE_BOOK_PAGE,cacheKey);
+
+        if (enableCache) {
+
+            return cacheUtil.queryWithMutex(
+                    hashKey,
+                    new TypeReference<PageResult<BookInfoPageRespDTO>>() {},
+                    () -> queryBookInfoPage2Db(reqDTO),
+                    5L,
+                    TimeUnit.MINUTES
+            );
+        }
+        return queryBookInfoPage2Db(reqDTO);
+    }
+
+    private PageResult<BookInfoPageRespDTO> queryBookInfoPage2Db(BookInfoPageReqDTO reqDTO) {
         Integer channelId = reqDTO.getChannelId();
         Long categoryId = reqDTO.getCategoryId();
         Integer bookStatus = reqDTO.getBookStatus();
@@ -76,11 +92,16 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
             queryWrapper.eq(BookInfo::getCategoryId, categoryId);
         } else if (channelId != null && channelId > 0) {
             // 只选了一级频道 (例如男频/女频)，使用子查询匹配该频道下的所有子分类
-            queryWrapper.inSql(BookInfo::getCategoryId, "SELECT id FROM category WHERE parent_id = " + channelId);
-        }
+            List<Long> childrenCategoryIds = categoryMapper.selectList(new LambdaQueryWrapper<Category>()
+                            .select(Category::getId)
+                            .eq(Category::getParentId, channelId)
+                    .eq(Category::getStatus, CategoryStatusEnum.SHOW)
+            ).stream().map(Category::getId).toList();
+            // 只选了一级频道 (例如男频/女频)，使用子查询匹配该频道下的所有子分类
+            queryWrapper.in(CollUtil.isNotEmpty(childrenCategoryIds),BookInfo::getCategoryId, childrenCategoryIds);        }
 
-        // 3. 连载状态筛选 (-1 为全部)
-        if (bookStatus != null && bookStatus != -1) {
+        // 3. 连载状态筛选
+        if (bookStatus != null) {
             queryWrapper.eq(BookInfo::getBookStatus, bookStatus);
         }
         // 5. 排序规则：若未传自定义排序，默认按更新时间倒序
@@ -120,7 +141,8 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
         }
         Result<ShelfDTO> result = shelfFeignClient.getShelfDTO(id,userId);
         if (result == null || result.getCode() != 200 || result.getData() == null) {
-            throw new BusinessException(ResultCode.UNAVAILABLE_SERVICE, "查找书架信息失败");
+            bookDetailQueryRespDTO.setUserInteract(new BookInfoDetailRespDTO.UserInteract(false, null, null));
+            return bookDetailQueryRespDTO;
         }
         ShelfDTO shelfDTO = result.getData();
         BookInfoDetailRespDTO.UserInteract userInteract = new BookInfoDetailRespDTO.UserInteract();
@@ -131,141 +153,10 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
         return bookDetailQueryRespDTO;
     }
 
-    public BookCatalogQueryRespDTO queryBookCatalogById(Long bookId, String sortOrder) {
-        Long userId = UserContextHolder.getUserId();
-        BookInfo bookInfo = this.getById(bookId);
-        if (bookInfo == null || !bookInfo.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
-            throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
-        }
-        if (!sortOrder.equals("ASC") && !sortOrder.equals("DESC")) {
-            throw new BusinessException(ResultCode.PARAM_INVALID);
-        }
-        List<BookChapter> bookChapters = cacheUtil.queryListWithMutex(
-                String.format(RedisKeyConstants.CACHE_BOOK_CATALOG, bookId),
-                BookChapter.class,
-                () -> bookChapterMapper.selectList(new LambdaQueryWrapper<BookChapter>()
-                        .eq(BookChapter::getBookId, bookInfo.getId())
-                        .eq(BookChapter::getStatus, ChapterStatusEnum.PUBLISHED.getCode())
-                ),
-                2L,
-                TimeUnit.HOURS
-        );
-        if (sortOrder.equals("DESC")) {
-            CollUtil.reverse(bookChapters);
-        }
-        List<UserChapterUnlock> userChapterUnlocks = userChapterUnlockMapper.selectList(new LambdaQueryWrapper<UserChapterUnlock>()
-                .eq(UserChapterUnlock::getUserId, userId)
-                .eq(UserChapterUnlock::getBookId, bookId)
-        );
-        Set<Long> unlockedChapters = userChapterUnlocks.stream().map(UserChapterUnlock::getChapterId).collect(Collectors.toSet());
 
 
-        BookCatalogQueryRespDTO bookCatalogQueryRespDTO = new BookCatalogQueryRespDTO();
-        bookCatalogQueryRespDTO.setBookId(bookId);
-        bookCatalogQueryRespDTO.setTotalChapters(bookChapters.size());
-
-        bookCatalogQueryRespDTO.setChapters(bookChapters.stream().map(bookChapter -> {
-            BookCatalogQueryRespDTO.ChapterInfoDTO chapterInfoDTO = new BookCatalogQueryRespDTO.ChapterInfoDTO();
-            BeanUtil.copyProperties(bookChapter, chapterInfoDTO);
-            if (Objects.equals(bookChapter.getIsCharge(), ChapterChargeEnum.FREE.getCode())) {
-                chapterInfoDTO.setIsUnlocked(true);
-            } else {
-                chapterInfoDTO.setIsUnlocked(unlockedChapters.contains(bookChapter.getId()));
-            }
-            return chapterInfoDTO;
-        }).collect(Collectors.toList()));
-        return bookCatalogQueryRespDTO;
-
-    }
-
-    @Override
-    public BookPublishRespDTO publishBook(BookPublishReqDTO bookPublishReqDTO) {
-        String bookName = bookPublishReqDTO.getBookName();
-        Integer channelId = bookPublishReqDTO.getChannelId();
-        Integer categoryId = bookPublishReqDTO.getCategoryId();
-        List<String> tags = bookPublishReqDTO.getTags();
-        Integer status = bookPublishReqDTO.getStatus();
-        String coverUrl = bookPublishReqDTO.getCoverUrl();
 
 
-        if (ObjUtil.hasEmpty(channelId, categoryId, status)) {
-            throw new BusinessException(ResultCode.PARAM_INVALID);
-        }
-        if (StrUtil.isBlank(bookName)) {
-            throw new BusinessException(ResultCode.PARAM_INVALID, "书名不能为空");
-        }
-
-        if (coverUrl == null) {
-            coverUrl = OSSConstants.DEFAULT_COVER_URL;
-        }
-        Long userId = UserContextHolder.getUserId();
-        Author author = authorMapper.selectOne(
-                new LambdaQueryWrapper<Author>()
-                        .eq(Author::getUserId, userId)
-        );
-        if (author == null) {
-            throw new BusinessException(ResultCode.NOT_AN_AUTHOR);
-        }
-        if (!Objects.equals(author.getStatus(), AuthorStatusTypeEnum.NORMAL.getCode())) {
-            throw new BusinessException(ResultCode.AUTHOR_BANNED);
-        }
-        Long count = this.lambdaQuery()
-                .eq(BookInfo::getAuthorId, author.getId())
-                .eq(BookInfo::getBookName, bookName)
-                .count();
-        if (count > 0) {
-            throw new BusinessException(ResultCode.CATEGORY_NOT_EXISTED);
-        }
-        Category channel = categoryMapper.selectById(channelId);
-        Category category = categoryMapper.selectById(categoryId);
-        if (channel == null || category == null) {
-            throw new BusinessException(ResultCode.CATEGORY_NOT_EXISTED);
-        }
-        BookInfo bookInfo = new BookInfo();
-        BeanUtil.copyProperties(bookPublishReqDTO, bookInfo);
-        bookInfo.setBookStatus(BookStatusEnum.SERIALIZING.getCode());
-        bookInfo.setTags(JSONUtil.toJsonStr(tags));
-        bookInfo.setCollectCount(0);
-        bookInfo.setScore(new BigDecimal(0));
-        bookInfo.setWordCount(0);
-        bookInfo.setAuthorId(author.getId());
-        bookInfo.setAuthorName(author.getPenName());
-        bookInfo.setCategoryName(category.getName());
-        boolean save = this.save(bookInfo);
-        if (!save) {
-            throw new BusinessException(ResultCode.OPERATION_FAILED);
-        }
-        BookPublishRespDTO bookPublishRespDTO = new BookPublishRespDTO();
-        BeanUtil.copyProperties(bookInfo, bookPublishRespDTO);
-        bookPublishRespDTO.setTags(tags);
-        return bookPublishRespDTO;
-    }
-
-    @Override
-    public void overBook(Long bookId) {
-        BookInfo bookInfo = this.getById(bookId);
-        if (bookInfo == null) {
-            throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
-        }
-        Long userId = UserContextHolder.getUserId();
-        Author author = authorMapper.selectOne(new LambdaQueryWrapper<Author>()
-                .eq(Author::getUserId, userId)
-        );
-        if (author == null) {
-            throw new BusinessException(ResultCode.NOT_AN_AUTHOR);
-        }
-        if (!Objects.equals(bookInfo.getAuthorId(), author.getId())) {
-            throw new BusinessException(ResultCode.AUTHOR_NOT_PERMITTED);
-        }
-        boolean update = this.lambdaUpdate()
-                .set(BookInfo::getStatus, BookStatusEnum.FINISHED)
-                .eq(BookInfo::getId, bookId)
-                .update();
-        if (!update) {
-            throw new BusinessException(ResultCode.OPERATION_FAILED);
-
-        }
-    }
 
     @Override
     public PageResult<BookInfoPageRespDTO> searchBookPage(BookSearchPageReqDTO reqDTO) {

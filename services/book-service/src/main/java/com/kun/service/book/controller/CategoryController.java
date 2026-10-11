@@ -1,7 +1,6 @@
 package com.kun.service.book.controller;
 
 import com.kun.common.core.result.Result;
-import com.kun.service.book.dto.resp.CategoryQueryRespDTO;
 import com.kun.service.book.dto.resp.CategoryTrueRespDTO;
 import com.kun.service.book.service.CategoryService;
 import lombok.RequiredArgsConstructor;

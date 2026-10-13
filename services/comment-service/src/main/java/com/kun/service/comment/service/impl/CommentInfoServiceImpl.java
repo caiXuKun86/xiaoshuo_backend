@@ -63,7 +63,7 @@ public class CommentInfoServiceImpl extends ServiceImpl<CommentInfoMapper, Comme
     private final CommentLikeMapper commentLikeMapper;
 
     @Override
-    public PageResult<CommentPageRespDTO> pageComment(CommentPageReqDTO reqDTO) {
+    public PageResult<CommentInfoPageRespDTO> queryCommentInfoPage(CommentInfoPageReqDTO reqDTO) {
 
         Long userId = UserContextHolder.getUserId();
 
@@ -103,7 +103,7 @@ public class CommentInfoServiceImpl extends ServiceImpl<CommentInfoMapper, Comme
 
 
         return PageResult.of(page, commentInfo -> {
-            CommentPageRespDTO dto = BeanUtil.copyProperties(commentInfo, CommentPageRespDTO.class);
+            CommentInfoPageRespDTO dto = BeanUtil.copyProperties(commentInfo, CommentInfoPageRespDTO.class);
             Integer likeStatus = commentLikeMap.get(commentInfo.getId());
             if (likeStatus == null) {
                 dto.setIsLiked(false);
@@ -164,7 +164,8 @@ public class CommentInfoServiceImpl extends ServiceImpl<CommentInfoMapper, Comme
             commentParagraphStatService.incrParagraphCommentCount(
                     commentInfo.getBookId(),
                     commentInfo.getChapterId(),
-                    commentInfo.getParagraphIndex()
+                    commentInfo.getParagraphIndex(),
+                    true
             );
         }
 
@@ -172,7 +173,7 @@ public class CommentInfoServiceImpl extends ServiceImpl<CommentInfoMapper, Comme
     }
 
     @Override
-    public PageResult<CommentRepliesPageRespDTO> pageCommentReplies(Long rootId, CommentRepliesPageReqDTO reqDTO) {
+    public PageResult<CommentRepliesPageRespDTO> queryCommentReplyPage(Long rootId, CommentRepliesPageReqDTO reqDTO) {
         Long userId = UserContextHolder.getUserId();
         LambdaQueryWrapper<CommentInfo> queryWrapper = new LambdaQueryWrapper<>();
 
@@ -294,7 +295,8 @@ public class CommentInfoServiceImpl extends ServiceImpl<CommentInfoMapper, Comme
             commentParagraphStatService.incrParagraphCommentCount(
                     rootComment.getBookId(),
                     rootComment.getChapterId(),
-                    rootComment.getParagraphIndex()
+                    rootComment.getParagraphIndex(),
+                    true
             );
         }
 
@@ -303,7 +305,7 @@ public class CommentInfoServiceImpl extends ServiceImpl<CommentInfoMapper, Comme
     }
 
     @Override
-    public PageResult<ParagraphCommentPageRespDTO> pageParagraphComment(ParagraphCommentPageReqDTO reqDTO) {
+    public PageResult<ParagraphCommentPageRespDTO> queryParagraphCommentPage(ParagraphCommentPageReqDTO reqDTO) {
         Long userId = UserContextHolder.getUserId();
 
         Long chapterId = reqDTO.getChapterId();
@@ -418,25 +420,37 @@ public class CommentInfoServiceImpl extends ServiceImpl<CommentInfoMapper, Comme
         }
         Long userId = UserContextHolder.getUserId();
         if (!commentInfo.getUserId().equals(userId)) {
-            throw new BusinessException(ResultCode.NOAUTH_OP_COMMENT);
+            throw new BusinessException(ResultCode.COMMENT_CANNOT_OP);
         }
         boolean update = this.lambdaUpdate()
                 .eq(CommentInfo::getId, commentId)
-                .set(CommentInfo::getStatus, CommentStatusEnum.USER_DELETED.getCode())
+                .set(CommentInfo::getStatus, CommentStatusEnum.DELETED.getCode())
                 .update();
         if (!update) {
             throw new BusinessException(ResultCode.OPERATION_FAILED);
         }
-        Long rootId = commentInfo.getRootId();
-        if (rootId == 0) {
+        if (commentInfo.getRootId() != 0) {
+            //rootId 回复数量+1
             boolean update1 = this.lambdaUpdate()
-                    .eq(CommentInfo::getRootId, rootId)
-                    .set(CommentInfo::getStatus, CommentStatusEnum.USER_DELETED.getCode())
+                    .setSql("reply_count = reply_count - 1")
+                    .eq(CommentInfo::getId, commentInfo.getRootId())
                     .update();
             if (!update1) {
                 throw new BusinessException(ResultCode.OPERATION_FAILED);
             }
         }
+        // 若回复的是段落评论吐槽，同样递增该段落气泡统计
+        if (Integer.valueOf(3).equals(commentInfo.getCommentType())
+                && commentInfo.getParagraphIndex() != null
+                && commentInfo.getParagraphIndex() > 0) {
+            commentParagraphStatService.incrParagraphCommentCount(
+                    commentInfo.getBookId(),
+                    commentInfo.getChapterId(),
+                    commentInfo.getParagraphIndex(),
+                    false
+            );
+        }
+
 
     }
 

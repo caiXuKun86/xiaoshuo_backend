@@ -14,15 +14,15 @@ import com.kun.service.comment.dto.resp.*;
 public interface CommentInfoService extends IService<CommentInfo> {
 
 
-    PageResult<CommentPageRespDTO> pageComment(CommentPageReqDTO commentPageReqDTO);
+    PageResult<CommentInfoPageRespDTO> queryCommentInfoPage(CommentInfoPageReqDTO commentPageReqDTO);
 
     CommentPublishRespDTO publishComment(CommentPublishReqDTO commentPublishReqDTO);
 
-    PageResult<CommentRepliesPageRespDTO> pageCommentReplies(Long rootId, CommentRepliesPageReqDTO commentRepliesPageReqDTO);
+    PageResult<CommentRepliesPageRespDTO> queryCommentReplyPage(Long rootId, CommentRepliesPageReqDTO commentRepliesPageReqDTO);
 
     CommentReplyRespDTO replyComment(CommentReplyReqDTO commentReplyReqDTO);
 
-    PageResult<ParagraphCommentPageRespDTO> pageParagraphComment(ParagraphCommentPageReqDTO paragraphCommentPageReqDTO);
+    PageResult<ParagraphCommentPageRespDTO> queryParagraphCommentPage(ParagraphCommentPageReqDTO paragraphCommentPageReqDTO);
 
     CommentLikeRespDTO likeComment(Long commentId, CommentLikeReqDTO commentLikeReqDTO);
 

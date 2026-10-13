@@ -7,7 +7,7 @@ import com.kun.service.shelf.dto.req.BookShelfMergeReqDTO;
 import com.kun.service.shelf.dto.req.BookShelfPageReqDTO;
 import com.kun.service.shelf.dto.req.BookShelfSyncReqDTO;
 import com.kun.service.shelf.dto.resp.BookShelfAddRespDTO;
-import com.kun.service.shelf.dto.resp.BookShelfQueryRespDTO;
+import com.kun.service.shelf.dto.resp.BookShelfPageRespDTO;
 import com.kun.service.shelf.dto.resp.BookShelfSyncRespDTO;
 import com.kun.service.shelf.dto.resp.ReadingProgressQueryRespDTO;
 import com.kun.service.shelf.service.BookshelfService;
@@ -24,8 +24,8 @@ public class ShelfController {
     private final BookshelfService bookshelfService;
 
     @GetMapping("/list")
-    public Result<PageResult<BookShelfQueryRespDTO>> pageBookShelfList(BookShelfPageReqDTO bookShelfPageReqDTO) {
-        PageResult<BookShelfQueryRespDTO> pageResult = bookshelfService.pageBookShelfList(bookShelfPageReqDTO);
+    public Result<PageResult<BookShelfPageRespDTO>> pageBookShelfList(BookShelfPageReqDTO bookShelfPageReqDTO) {
+        PageResult<BookShelfPageRespDTO> pageResult = bookshelfService.pageBookShelfList(bookShelfPageReqDTO);
         return Result.success(pageResult);
     }
 

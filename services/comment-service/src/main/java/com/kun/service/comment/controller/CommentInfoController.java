@@ -12,13 +12,13 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/comment")
-public class CommentController {
+public class CommentInfoController {
 
     private final CommentInfoService commentInfoService;
 
     @GetMapping("/list")
-    public Result<PageResult<CommentPageRespDTO>> pageComment(CommentPageReqDTO commentPageReqDTO) {
-        PageResult<CommentPageRespDTO> result = commentInfoService.pageComment(commentPageReqDTO);
+    public Result<PageResult<CommentInfoPageRespDTO>> queryCommentInfoPage(CommentInfoPageReqDTO commentInfoPageReqDTO) {
+        PageResult<CommentInfoPageRespDTO> result = commentInfoService.queryCommentInfoPage(commentInfoPageReqDTO);
         return Result.success(result);
     }
 
@@ -30,8 +30,8 @@ public class CommentController {
     }
 
     @GetMapping("/{rootId}/replies")
-    public Result<PageResult<CommentRepliesPageRespDTO>> pageCommentReplies(@PathVariable("rootId") Long rootId, CommentRepliesPageReqDTO commentRepliesPageReqDTO) {
-        PageResult<CommentRepliesPageRespDTO> result = commentInfoService.pageCommentReplies(rootId, commentRepliesPageReqDTO);
+    public Result<PageResult<CommentRepliesPageRespDTO>> queryCommentReplyPage(@PathVariable("rootId") Long rootId, CommentRepliesPageReqDTO commentRepliesPageReqDTO) {
+        PageResult<CommentRepliesPageRespDTO> result = commentInfoService.queryCommentReplyPage(rootId, commentRepliesPageReqDTO);
         return Result.success(result);
     }
 
@@ -42,9 +42,9 @@ public class CommentController {
     }
 
     @GetMapping("/paragraph/list")
-    public Result<PageResult<ParagraphCommentPageRespDTO>> pageParagraphComment( ParagraphCommentPageReqDTO paragraphCommentPageReqDTO) {
+    public Result<PageResult<ParagraphCommentPageRespDTO>> queryParagraphCommentPage( ParagraphCommentPageReqDTO paragraphCommentPageReqDTO) {
 
-        PageResult<ParagraphCommentPageRespDTO> result = commentInfoService.pageParagraphComment(paragraphCommentPageReqDTO);
+        PageResult<ParagraphCommentPageRespDTO> result = commentInfoService.queryParagraphCommentPage(paragraphCommentPageReqDTO);
         return Result.success(result);
     }
 

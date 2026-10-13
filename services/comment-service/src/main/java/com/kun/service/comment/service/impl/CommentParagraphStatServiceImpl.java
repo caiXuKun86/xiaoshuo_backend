@@ -114,7 +114,7 @@ public class CommentParagraphStatServiceImpl extends ServiceImpl<CommentParagrap
 
     @Transactional(rollbackFor = Exception.class)
     @Override
-    public void incrParagraphCommentCount(Long bookId, Long chapterId, Integer paragraphIndex) {
+    public void incrParagraphCommentCount(Long bookId, Long chapterId, Integer paragraphIndex, Boolean isAdd) {
         if (chapterId == null || paragraphIndex == null || paragraphIndex <= 0) {
             return;
         }
@@ -131,8 +131,9 @@ public class CommentParagraphStatServiceImpl extends ServiceImpl<CommentParagrap
             stat.setCommentCount(1);
             this.save(stat);
         } else {
+            String op = isAdd ? "+" : "-";
             this.lambdaUpdate()
-                    .setSql("comment_count = comment_count + 1")
+                    .setSql("comment_count = comment_count" + op + "1")
                     .eq(CommentParagraphStat::getId, stat.getId())
                     .update();
         }
@@ -141,7 +142,7 @@ public class CommentParagraphStatServiceImpl extends ServiceImpl<CommentParagrap
         Boolean hasKey = stringRedisTemplate.hasKey(cacheKey);
         if (hasKey) {
             stringRedisTemplate.opsForHash().delete(cacheKey, EMPTY_CACHE_FLAG);
-            stringRedisTemplate.opsForHash().increment(cacheKey, String.valueOf(paragraphIndex), 1);
+            stringRedisTemplate.opsForHash().increment(cacheKey, String.valueOf(paragraphIndex), isAdd ? 1 : -1);
         }
     }
 }

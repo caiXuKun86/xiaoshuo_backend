@@ -27,7 +27,7 @@ import com.kun.service.shelf.dto.req.BookShelfMergeReqDTO;
 import com.kun.service.shelf.dto.req.BookShelfPageReqDTO;
 import com.kun.service.shelf.dto.req.BookShelfSyncReqDTO;
 import com.kun.service.shelf.dto.resp.BookShelfAddRespDTO;
-import com.kun.service.shelf.dto.resp.BookShelfQueryRespDTO;
+import com.kun.service.shelf.dto.resp.BookShelfPageRespDTO;
 import com.kun.service.shelf.dto.resp.BookShelfSyncRespDTO;
 import com.kun.service.shelf.dto.resp.ReadingProgressQueryRespDTO;
 import com.kun.service.shelf.mapper.BookshelfMapper;
@@ -67,7 +67,7 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
     private final ReadHistoryService readHistoryService;
 
     @Override
-    public PageResult<BookShelfQueryRespDTO> pageBookShelfList(BookShelfPageReqDTO bookShelfPageReqDTO) {
+    public PageResult<BookShelfPageRespDTO> pageBookShelfList(BookShelfPageReqDTO bookShelfPageReqDTO) {
 
         Long userId = UserContextHolder.getUserId();
 
@@ -91,7 +91,7 @@ public class BookshelfServiceImpl extends ServiceImpl<BookshelfMapper, Bookshelf
 
 
         return PageResult.of(bookshelfPage, bookshelf -> {
-            BookShelfQueryRespDTO dto = new BookShelfQueryRespDTO();
+            BookShelfPageRespDTO dto = new BookShelfPageRespDTO();
             BeanUtils.copyProperties(bookshelf, dto);
             BookDTO bookDTO = bookDTOMap.get(bookshelf.getBookId());
             if (bookDTO != null) {

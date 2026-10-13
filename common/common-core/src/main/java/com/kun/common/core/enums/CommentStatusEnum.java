@@ -11,9 +11,22 @@ import lombok.Getter;
 public enum CommentStatusEnum {
     AUDITING(0, "待审核"),
     NORMAL(1, "正常展示"),
-    USER_DELETED(2, "用户自删"),
+    DELETED(2, "用户/管理员删除"),
     BANNED(3, "违规下架");
 
     private final Integer code;
     private final String description;
+
+    public static CommentStatusEnum getByCode(Integer code) {
+        if (code == null) {
+            return null;
+        }
+        for (CommentStatusEnum value : CommentStatusEnum.values()) {
+            if (value.getCode().equals(code)) {
+                return value;
+            }
+        }
+        return null;
+
+    }
 }

@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-public class CommentPageReqDTO extends com.kun.common.database.page.PageRequest {
+public class CommentInfoPageReqDTO extends com.kun.common.database.page.PageRequest {
 
     /**
      * 频道筛选
@@ -15,7 +15,7 @@ public class CommentPageReqDTO extends com.kun.common.database.page.PageRequest 
     private Long bookId;
 
     /**
-     * 二级分类 ID
+     * 分类 ID
      */
     private Long chapterId;
     /**

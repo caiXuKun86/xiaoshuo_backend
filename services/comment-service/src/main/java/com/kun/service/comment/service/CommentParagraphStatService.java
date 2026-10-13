@@ -13,5 +13,5 @@ public interface CommentParagraphStatService extends IService<CommentParagraphSt
 
     BubbleCommentCountQueryRespDTO getParagraphBubbles(Long chapterId);
 
-    void incrParagraphCommentCount(Long bookId, Long chapterId, Integer paragraphIndex);
+    void incrParagraphCommentCount(Long bookId, Long chapterId, Integer paragraphIndex,Boolean isAdd);
 }

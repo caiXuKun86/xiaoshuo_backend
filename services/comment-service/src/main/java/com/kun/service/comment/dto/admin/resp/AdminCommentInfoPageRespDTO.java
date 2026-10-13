@@ -1,4 +1,4 @@
-package com.kun.service.comment.dto.resp;
+package com.kun.service.comment.dto.admin.resp;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class CommentPageRespDTO implements Serializable {
+public class AdminCommentInfoPageRespDTO implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -21,23 +21,34 @@ public class CommentPageRespDTO implements Serializable {
 
     private Long id;
     /**
+     * 作品Id
+     */
+    private Long bookId;
+    /**
+     * 章节Id
+     */
+    private Long chapterId;
+    /**
+     * 评论类型
+     */
+    private Integer commentType;
+    /**
+     * 段落
+     */
+    private Integer paragraphIndex;
+    /**
      * 发评人用户 ID
      */
     private Long userId;
 
     /**
-     * 发评人昵称 (冗余快照，避免高频联表查询 user)
+     * 发评人昵称
      */
     private String userNickname;
 
-    /**
-     * 发评人头像 URL (冗余快照，列表秒级渲染)
-     */
-    private String userAvatar;
-
 
     /**
-     * 评论文本内容 (已过敏感词过滤)
+     * 评论文本内容
      */
     private String content;
     /**
@@ -51,14 +62,19 @@ public class CommentPageRespDTO implements Serializable {
     private Integer replyCount;
 
     /**
-     * 是否点赞
+     * 状态
      */
-    private Boolean isLiked;
+    private Integer status;
 
     /**
      * 创建时间
      */
     private LocalDateTime createTime;
+
+    /**
+     * 更新时间
+     */
+    private LocalDateTime updateTime;
 
 
 }

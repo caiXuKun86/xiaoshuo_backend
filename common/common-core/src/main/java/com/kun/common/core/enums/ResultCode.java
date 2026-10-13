@@ -38,8 +38,6 @@ public enum ResultCode implements IResultCode {
     USER_NOT_FOUND(20002, "用户不存在"),
     PASSWORD_ERROR(20003, "用户名或密码错误"),
     ALREADY_CHECKED_IN(20004, "今日已完成签到，请明日再来"),
-    INVITATION_CODE_INVALID(20005, "邀请码不存在或已达上限"),
-    INSUFFICIENT_POINTS(20006, "可用积分余额不足"),
 
     // ==================== 30000 ~ 39999 图书与内容服务 (Book) ====================
     //通用
@@ -77,13 +75,12 @@ public enum ResultCode implements IResultCode {
 
     // ==================== 50000 ~ 59999 互动评论服务 (Comment) ====================
     RATING_SCORE_ILLEGAL(50001, "评分分值非法（必须在 1 到 5 之间）"),
-    ALREADY_RATING(50002, "已评分"),
+    ALREADY_RATED(50002, "您已经为本书评过分了"),
     COMMENT_SENSITIVE_REJECT(50003, "评论内容包含敏感违规词，无法发布"),
     COMMENT_FREQUENCY_LIMIT(50004, "发言过于频繁，请休息一下再发"),
     COMMENT_NOT_FOUND(50005, "评论不存在或已被原作者删除"),
     PARENT_COMMENT_NOT_FOUND(50006, "目标评论不存在或已被删除"),
-    NOAUTH_OP_COMMENT(50007, "无权操作该评论"),
-    ALREADY_RATED(50008, "您已经为本书评过分了"),
+    COMMENT_CANNOT_OP(50007, "无权操作该评论"),
 
     // ==================== 60000 ~ 69999 交易支付服务 (Pay) ====================
 

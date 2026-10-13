@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class BookShelfQueryRespDTO implements Serializable {
+public class BookShelfPageRespDTO implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;

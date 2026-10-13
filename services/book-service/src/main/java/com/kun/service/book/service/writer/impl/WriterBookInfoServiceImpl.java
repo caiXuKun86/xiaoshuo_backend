@@ -200,10 +200,25 @@ public class WriterBookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookI
     @Override
     public WriterBookStatsRespDTO queryBookStats() {
         Long authorId = getCurrentAuthorId();
+
         List<BookInfo> bookInfoList = this.lambdaQuery()
                 .eq(BookInfo::getAuthorId, authorId)
                 .list();
+
         List<Long> bookIds = bookInfoList.stream().map(BookInfo::getId).toList();
+        if(CollUtil.isEmpty(bookInfoList)){
+            return WriterBookStatsRespDTO
+                    .builder()
+                    .totalBooks(0)
+                    .publishedChapters(0)
+                    .pendingAuditChapters(0)
+                    .totalCollectCount(0L)
+                    .totalWordCount(0L)
+                    .build();
+        }
+        long totalWordCount = bookInfoList.stream().mapToLong(BookInfo::getWordCount).sum();
+        long totalCollectCount = bookInfoList.stream().mapToInt(BookInfo::getCollectCount).sum();
+
         Long publishedChapters = bookChapterMapper.selectCount(
                 new LambdaQueryWrapper<BookChapter>()
                         .in(CollUtil.isNotEmpty(bookIds), BookChapter::getBookId, bookIds)
@@ -214,8 +229,7 @@ public class WriterBookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookI
                         .in(CollUtil.isNotEmpty(bookIds), BookChapter::getBookId, bookIds)
                         .eq(BookChapter::getStatus, ChapterStatusEnum.AUDITING.getCode())
         );
-        long totalWordCount = bookInfoList.stream().mapToLong(BookInfo::getWordCount).sum();
-        long totalCollectCount = bookInfoList.stream().mapToInt(BookInfo::getCollectCount).sum();
+
         return WriterBookStatsRespDTO
                 .builder()
                 .totalBooks(bookInfoList.size())

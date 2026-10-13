@@ -4,6 +4,7 @@ import com.kun.common.core.aop.RequireRole;
 import com.kun.common.core.result.Result;
 import com.kun.common.database.page.PageResult;
 import com.kun.service.book.dto.admin.req.AdminBookInfoPageReqDTO;
+import com.kun.service.book.dto.admin.resp.AdminBookInfoDashboardRespDTO;
 import com.kun.service.book.dto.admin.resp.AdminBookInfoDetailRespDTO;
 import com.kun.service.book.dto.admin.resp.AdminBookInfoPageRespDTO;
 import com.kun.service.book.service.admin.AdminBookInfoService;
@@ -41,6 +42,13 @@ public class AdminBookInfoController {
     public Result<Void> deleteBookInfo(@PathVariable Long bookId) {
         bookInfoService.deleteBookInfo(bookId);
         return Result.success();
+    }
+
+    @GetMapping("/dashboard")
+    public Result<AdminBookInfoDashboardRespDTO> queryBookInfoDashboard() {
+        AdminBookInfoDashboardRespDTO bookInfoDashboardRespDTO = bookInfoService.queryBookInfoDashboard();
+        return Result.success(bookInfoDashboardRespDTO);
+
     }
 
 

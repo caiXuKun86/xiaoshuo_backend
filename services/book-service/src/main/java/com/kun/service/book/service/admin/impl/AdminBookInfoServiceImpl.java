@@ -7,14 +7,18 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kun.common.core.enums.BookOpStatusEnum;
+import com.kun.common.core.enums.ChapterStatusEnum;
 import com.kun.common.core.enums.ResultCode;
 import com.kun.common.core.exception.BusinessException;
 import com.kun.common.database.page.PageResult;
+import com.kun.service.book.domain.BookChapter;
 import com.kun.service.book.domain.BookInfo;
 import com.kun.service.book.domain.Category;
 import com.kun.service.book.dto.admin.req.AdminBookInfoPageReqDTO;
+import com.kun.service.book.dto.admin.resp.AdminBookInfoDashboardRespDTO;
 import com.kun.service.book.dto.admin.resp.AdminBookInfoDetailRespDTO;
 import com.kun.service.book.dto.admin.resp.AdminBookInfoPageRespDTO;
+import com.kun.service.book.mapper.BookChapterMapper;
 import com.kun.service.book.mapper.BookInfoMapper;
 import com.kun.service.book.mapper.CategoryMapper;
 import com.kun.service.book.service.admin.AdminBookInfoService;
@@ -37,6 +41,7 @@ import java.util.List;
 public class AdminBookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> implements AdminBookInfoService {
 
     private final CategoryMapper categoryMapper;
+    private final BookChapterMapper bookChapterMapper;
 
     @Override
     public PageResult<AdminBookInfoPageRespDTO> queryBookInfoPage(AdminBookInfoPageReqDTO reqDTO) {
@@ -68,7 +73,7 @@ public class AdminBookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookIn
 //                    .eq(Category::getStatus, CategoryStatusEnum.SHOW)
             ).stream().map(Category::getId).toList();
             // 只选了一级频道 (例如男频/女频)，使用子查询匹配该频道下的所有子分类
-            queryWrapper.in(CollUtil.isNotEmpty(childrenCategoryIds),BookInfo::getCategoryId, childrenCategoryIds);
+            queryWrapper.in(CollUtil.isNotEmpty(childrenCategoryIds), BookInfo::getCategoryId, childrenCategoryIds);
         }
 
 
@@ -137,6 +142,19 @@ public class AdminBookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookIn
             throw new BusinessException(ResultCode.OPERATION_FAILED);
         }
 
+    }
+
+    @Override
+    public AdminBookInfoDashboardRespDTO queryBookInfoDashboard() {
+        AdminBookInfoDashboardRespDTO dto = baseMapper.countBookStats(0,1,1,0);
+
+        int totalCategories = categoryMapper.selectCount(new LambdaQueryWrapper<Category>()).intValue();
+        int auditingChapters = bookChapterMapper.selectCount(new LambdaQueryWrapper<BookChapter>()
+                .eq(BookChapter::getStatus, ChapterStatusEnum.AUDITING.getCode())
+        ).intValue();
+        dto.setTotalCategories(totalCategories);
+        dto.setAuditingChapters(auditingChapters);
+        return dto;
     }
 }
 

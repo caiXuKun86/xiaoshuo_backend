@@ -2,6 +2,8 @@ package com.kun.service.comment.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.kun.service.comment.domain.CommentInfo;
+import com.kun.service.comment.dto.admin.resp.AdminCommentDashboardRespDTO;
+import org.apache.ibatis.annotations.Param;
 
 /**
 * @author Lenovo
@@ -11,6 +13,7 @@ import com.kun.service.comment.domain.CommentInfo;
 */
 public interface CommentInfoMapper extends BaseMapper<CommentInfo> {
 
+    AdminCommentDashboardRespDTO countCommentStats(@Param("auditCode") int auditCode, @Param("paragraphCode")int paragraphCode);
 }
 
 

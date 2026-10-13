@@ -183,17 +183,7 @@ public class AdminCommentInfoServiceImpl extends ServiceImpl<CommentInfoMapper, 
 
     @Override
     public AdminCommentDashboardRespDTO queryCommentDashboard() {
-        Long totalComments = this.lambdaQuery()
-                .count();
-
-        Long auditingComments = this.lambdaQuery()
-                .eq(CommentInfo::getStatus,CommentStatusEnum.AUDITING.getCode())
-                .count();
-        Long paragraphComments = this.lambdaQuery()
-                .eq(CommentInfo::getCommentType, CommentTypeEnum.PARAGRAPH.getCode())
-                .count();
-        return new AdminCommentDashboardRespDTO(auditingComments,totalComments,paragraphComments);
-
+        return baseMapper.countCommentStats(0, 3);
     }
 
     private void checkBookAndChapter(Long bookId, Long chapterId) {

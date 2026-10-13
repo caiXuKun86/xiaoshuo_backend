@@ -1,7 +1,9 @@
 package com.kun.service.book.mapper;
 
-import com.kun.service.book.domain.BookInfo;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.kun.service.book.domain.BookInfo;
+import com.kun.service.book.dto.admin.resp.AdminBookInfoDashboardRespDTO;
+import org.apache.ibatis.annotations.Param;
 
 /**
 * @author Lenovo
@@ -10,6 +12,11 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 * @Entity com.kun.service.book.domain.BookInfo
 */
 public interface BookInfoMapper extends BaseMapper<BookInfo> {
+
+    AdminBookInfoDashboardRespDTO countBookStats( @Param("serializingCode") Integer serializingCode,
+                                                  @Param("finishedCode") Integer finishedCode,
+                                                  @Param("onShelfCode") Integer onShelfCode,
+                                                  @Param("bannedCode") Integer bannedCode);
 
 }
 

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.kun.common.database.page.PageResult;
 import com.kun.service.book.domain.BookInfo;
 import com.kun.service.book.dto.admin.req.AdminBookInfoPageReqDTO;
+import com.kun.service.book.dto.admin.resp.AdminBookInfoDashboardRespDTO;
 import com.kun.service.book.dto.admin.resp.AdminBookInfoDetailRespDTO;
 import com.kun.service.book.dto.admin.resp.AdminBookInfoPageRespDTO;
 
@@ -22,4 +23,6 @@ public interface AdminBookInfoService extends IService<BookInfo> {
     void patchBookInfoStatus(Long bookId, Integer status);
 
     void deleteBookInfo(Long bookId);
+
+    AdminBookInfoDashboardRespDTO queryBookInfoDashboard();
 }

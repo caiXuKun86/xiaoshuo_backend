@@ -34,8 +34,9 @@ public class ChapterDraftHandler implements ChapterStatusHandler {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void handle(BookChapter bookChapter, ChapterStatusContext context) {
-        if (!bookChapter.getStatus().equals(ChapterStatusEnum.PUBLISHED.getCode())
-                && !bookChapter.getStatus().equals(ChapterStatusEnum.AUDITING.getCode())) {
+        Integer status = bookChapter.getStatus();
+        if (!status.equals(ChapterStatusEnum.PUBLISHED.getCode())
+                && !status.equals(ChapterStatusEnum.AUDITING.getCode())) {
             throw new BusinessException(ResultCode.PARAM_INVALID);
         }
 
@@ -53,7 +54,7 @@ public class ChapterDraftHandler implements ChapterStatusHandler {
         Long bookId = bookChapter.getBookId();
         Long count = bookInfoMapper.selectCount(new LambdaQueryWrapper<BookInfo>()
                 .eq(BookInfo::getId, bookId)
-                .le(BookInfo::getLatestChapterId, bookChapter.getId()));
+                .eq(BookInfo::getLatestChapterId, bookChapter.getId()));
         boolean isNewestChapter = count > 0;
         BookChapter latestChapter = null;
         if (isNewestChapter) {
@@ -64,18 +65,21 @@ public class ChapterDraftHandler implements ChapterStatusHandler {
                     .last("LIMIT 1")
                     .one();
         }
-        int update1 = bookInfoMapper.update(
-                new LambdaUpdateWrapper<BookInfo>()
-                        .eq(BookInfo::getId, bookId)
-                        .setSql("word_count=word_count-" + bookChapter.getWordCount())
-                        .set(isNewestChapter, BookInfo::getLatestChapterId, latestChapter != null ? latestChapter.getId() : null)
-                        .set(isNewestChapter, BookInfo::getLatestChapterName, latestChapter != null ? latestChapter.getChapterName() : "")
-                        .set(isNewestChapter, BookInfo::getLatestChapterTime, latestChapter != null ? latestChapter.getPublishTime() : null)
-        );
-        if (update1 < 1) {
-            throw new BusinessException(ResultCode.OPERATION_FAILED);
+        if(status.equals(ChapterStatusEnum.PUBLISHED.getCode())){
+            int update1 = bookInfoMapper.update(
+                    new LambdaUpdateWrapper<BookInfo>()
+                            .eq(BookInfo::getId, bookId)
+                            .setSql("word_count=word_count-" + bookChapter.getWordCount())
+                            .set(isNewestChapter, BookInfo::getLatestChapterId, latestChapter != null ? latestChapter.getId() : null)
+                            .set(isNewestChapter, BookInfo::getLatestChapterName, latestChapter != null ? latestChapter.getChapterName() : "")
+                            .set(isNewestChapter, BookInfo::getLatestChapterTime, latestChapter != null ? latestChapter.getPublishTime() : null)
+            );
+            if (update1 < 1) {
+                throw new BusinessException(ResultCode.OPERATION_FAILED);
 
+            }
         }
+
         cacheUtil.delete(String.format(RedisKeyConstants.CACHE_BOOK_CATALOG, bookId, "ASC"));
         cacheUtil.delete(String.format(RedisKeyConstants.CACHE_BOOK_CATALOG, bookId, "DESC"));
         cacheUtil.delete(String.format(RedisKeyConstants.BOOK_INFO_PREFIX, bookId));

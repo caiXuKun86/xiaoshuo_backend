@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RequireRole
 @RestController
-@RequestMapping("/admin/book/chapter")
+@RequestMapping("/book/admin/chapter")
 @RequiredArgsConstructor
 public class AdminBookChapterController {
 
@@ -39,8 +39,8 @@ public class AdminBookChapterController {
         return Result.success();
     }
 
-    @GetMapping("/batch-charge")
-    public Result<AdminChapterBatchSetChargeRespDTO> setChapterChargeBatch(AdminChapterBatchSetChargeReqDTO chapterBatchSetChargeReqDTO) {
+    @PostMapping("/batch-charge")
+    public Result<AdminChapterBatchSetChargeRespDTO> setChapterChargeBatch(@RequestBody AdminChapterBatchSetChargeReqDTO chapterBatchSetChargeReqDTO) {
         AdminChapterBatchSetChargeRespDTO chapterBatchSetChargeRespDTO = bookChapterService.setChapterChargeBatch(chapterBatchSetChargeReqDTO);
         return Result.success(chapterBatchSetChargeRespDTO);
     }

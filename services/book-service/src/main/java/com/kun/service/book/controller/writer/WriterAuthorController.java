@@ -5,10 +5,7 @@ import com.kun.service.book.dto.writer.req.WriterAuthorUpdateRespDTO;
 import com.kun.service.book.dto.writer.resp.WriterAuthorProfileRespDTO;
 import com.kun.service.book.service.writer.WriterAuthorService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/book/writer")
@@ -26,7 +23,7 @@ public class WriterAuthorController {
     }
 
     @PutMapping("/profile")
-    public Result<Void> updateWriterProfile(WriterAuthorUpdateRespDTO authorUpdateRespDTO) {
+    public Result<Void> updateWriterProfile(@RequestBody WriterAuthorUpdateRespDTO authorUpdateRespDTO) {
         authorService.updateWriterProfile(authorUpdateRespDTO);
         return Result.success();
 

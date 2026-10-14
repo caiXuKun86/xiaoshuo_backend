@@ -6,6 +6,7 @@ import com.kun.common.core.result.Result;
 import com.kun.service.shelf.service.BookshelfService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController("innerShelfController")
@@ -15,11 +16,12 @@ public class ShelfController implements ShelfFeignClient {
     private final BookshelfService bookshelfService;
 
 
-
     @Override
     @GetMapping("/inner/shelf/info")
-    public Result<ShelfDTO> getShelfDTO(Long bookId, Long userId) {
-        ShelfDTO shelfDTO = bookshelfService.getShelfByBookId(bookId,userId);
+    public Result<ShelfDTO> getShelfDTO(@RequestParam("bookId") Long bookId,
+                                        @RequestParam("userId") Long userId) {
+
+        ShelfDTO shelfDTO = bookshelfService.getShelfByBookId(bookId, userId);
         return Result.success(shelfDTO);
 
 

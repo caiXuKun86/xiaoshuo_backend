@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kun.common.core.enums.ChapterChargeEnum;
@@ -12,7 +13,6 @@ import com.kun.common.core.enums.ResultCode;
 import com.kun.common.core.exception.BusinessException;
 import com.kun.common.database.page.PageResult;
 import com.kun.common.oss.template.OssTemplate;
-import com.kun.common.redis.util.CacheUtil;
 import com.kun.service.book.domain.BookChapter;
 import com.kun.service.book.domain.BookInfo;
 import com.kun.service.book.dto.admin.req.AdminChapterBatchSetChargeReqDTO;
@@ -44,18 +44,21 @@ public class AdminBookChapterServiceImpl extends ServiceImpl<BookChapterMapper, 
 
     private final BookInfoMapper bookInfoMapper;
     private final OssTemplate ossTemplate;
-    private final CacheUtil cacheUtil;
     private final ChapterStatusHandlerFactory chapterStatusHandlerFactory;
+
     @Override
     public PageResult<AdminChapterPageRespDTO> queryChapterPage(AdminChapterPageReqDTO reqDTO) {
         Integer status = reqDTO.getStatus();
         Integer isCharge = reqDTO.getIsCharge();
         Long bookId = reqDTO.getBookId();
         String chapterName = reqDTO.getChapterName();
-        Long count = bookInfoMapper.selectCount(new LambdaQueryWrapper<BookInfo>().eq(BookInfo::getId, bookId));
-        if (count < 1) {
-            throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
+        if (bookId != null) {
+            Long count = bookInfoMapper.selectCount(new LambdaQueryWrapper<BookInfo>().eq(BookInfo::getId, bookId));
+            if (count < 1) {
+                throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
+            }
         }
+
 
         LambdaQueryWrapper<BookChapter> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(status != null, BookChapter::getStatus, status)
@@ -102,8 +105,8 @@ public class AdminBookChapterServiceImpl extends ServiceImpl<BookChapterMapper, 
     @Transactional(rollbackFor = Exception.class)
     public void patchChapterStatus(Long chapterId, Integer status) {
         ChapterStatusEnum statusEnum = ChapterStatusEnum.getByCode(status);
-        if(statusEnum ==null){
-            throw new BusinessException(ResultCode.PARAM_INVALID,"状态不存在");
+        if (statusEnum == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "状态不存在");
         }
 
         BookChapter bookChapter = this.getById(chapterId);
@@ -111,7 +114,7 @@ public class AdminBookChapterServiceImpl extends ServiceImpl<BookChapterMapper, 
             throw new BusinessException(ResultCode.CHAPTER_NOT_FOUND);
         }
         ChapterStatusHandler chapterStatusHandler = chapterStatusHandlerFactory.getHandler(status);
-        chapterStatusHandler.handle(bookChapter,null);
+        chapterStatusHandler.handle(bookChapter, null);
 
     }
 
@@ -132,9 +135,10 @@ public class AdminBookChapterServiceImpl extends ServiceImpl<BookChapterMapper, 
             throw new BusinessException(ResultCode.PARAM_INVALID);
         }
 
-        int count = baseMapper.update(this.lambdaUpdate()
+        int count = baseMapper.update(new LambdaUpdateWrapper<BookChapter>()
                 .set(BookChapter::getIsCharge, ChapterChargeEnum.CHARGE.getCode())
                 .set(BookChapter::getRequiredPoints, requiredPoints)
+                .eq(BookChapter::getBookId, bookId)
                 .ge(BookChapter::getChapterIndex, startChapterIndex)
                 .le(endChapterIndex != null, BookChapter::getChapterIndex, endChapterIndex));
 

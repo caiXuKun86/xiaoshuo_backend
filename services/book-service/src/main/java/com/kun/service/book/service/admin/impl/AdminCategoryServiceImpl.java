@@ -82,11 +82,15 @@ public class AdminCategoryServiceImpl extends ServiceImpl<CategoryMapper, Catego
         LambdaQueryWrapper<Category> queryWrapper = new LambdaQueryWrapper<>();
         // 1. 业务硬约束：只展示已上架的书籍 (status = 1)
         queryWrapper.eq(status != null, Category::getStatus, status)
-                .eq(channelId != null, Category::getId, channelId)
+                .and(channelId != null, wq -> wq
+                        .eq(channelId != null, Category::getId, channelId)
+                        .or()
+                        .eq(channelId != null, Category::getParentId, channelId)
+                )
                 .likeRight(StrUtil.isNotBlank(name), Category::getName, name);
 
         if (!StringUtils.hasText(reqDTO.getSortField())) {
-            queryWrapper.orderByDesc(Category::getCreateTime);
+            queryWrapper.orderByAsc(Category::getSort);
         }
 
 
@@ -124,21 +128,23 @@ public class AdminCategoryServiceImpl extends ServiceImpl<CategoryMapper, Catego
 
     @Override
     public void updateCategory(Long id, AdminCategoryUpdateRepDTO categoryUpdateRepDTO) {
-        Long parentId = categoryUpdateRepDTO.getParentId();
+        Long channelId = categoryUpdateRepDTO.getChannelId();
         String name = categoryUpdateRepDTO.getName();
 
 
         if (StrUtil.isBlank(name)) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "分类名称不能为空");
         }
-        if (parentId == null) {
+        if (channelId == null) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "父标签不能为空");
         }
-        if (parentId != 0 && !this.lambdaQuery().eq(Category::getId, parentId).exists()) {
+        if (channelId != 0 && !this.lambdaQuery().eq(Category::getId, channelId).exists()) {
             throw new BusinessException(ResultCode.CATEGORY_NOT_FOUND, "父标签不存在");
         }
         Category category = BeanUtil.copyProperties(categoryUpdateRepDTO, Category.class);
         category.setId(id);
+        category.setParentId(channelId);
+
         boolean update = this.updateById(category);
         if (!update) {
             throw new BusinessException(ResultCode.OPERATION_FAILED);
@@ -185,6 +191,10 @@ public class AdminCategoryServiceImpl extends ServiceImpl<CategoryMapper, Catego
         );
         if (count > 0) {
             throw new BusinessException(ResultCode.CATEGORY_BOOK_EXISTED);
+        }
+        boolean b = this.removeById(id);
+        if(!b){
+            throw new BusinessException(ResultCode.OPERATION_FAILED);
         }
         clearCache();
     }

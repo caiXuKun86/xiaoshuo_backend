@@ -168,13 +168,16 @@ public class BookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookInfo> i
         LambdaQueryWrapper<BookInfo> queryWrapper = new LambdaQueryWrapper<>();
         // 1. 业务硬约束：只展示已上架的书籍 (status = 1)
         queryWrapper.eq(BookInfo::getStatus, 1);
-        String finalKeyword = keyword;
-        queryWrapper.and(wq -> wq.like(BookInfo::getBookName, finalKeyword)
-                .or().like(BookInfo::getAuthorName, finalKeyword)
-                .or().like(BookInfo::getTags, finalKeyword));
-        // 5. 排序规则：若未传自定义排序，默认按更新时间倒序
-        if (!StringUtils.hasText(reqDTO.getSortField())) {
-            queryWrapper.orderByDesc(BookInfo::getLatestChapterTime);
+
+        if (keyword.length() >= 2) {
+            // 使用 BOOLEAN MODE 进行全文检索
+            queryWrapper.apply("MATCH(book_name, author_name, tags,description) AGAINST({0} IN BOOLEAN MODE)", keyword);
+        } else {
+            // 单字搜索降级容错（针对 ngram_token_size = 2 的场景）
+            String finalKeyword = keyword;
+            queryWrapper.and(wq -> wq.like(BookInfo::getBookName, finalKeyword)
+                    .or().like(BookInfo::getAuthorName, finalKeyword)
+                    .or().like(BookInfo::getTags, finalKeyword));
         }
 
         // 6. 执行分页查询

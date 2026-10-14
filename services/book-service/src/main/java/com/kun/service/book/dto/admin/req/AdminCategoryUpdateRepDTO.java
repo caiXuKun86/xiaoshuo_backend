@@ -17,7 +17,7 @@ public class AdminCategoryUpdateRepDTO implements Serializable {
     /**
      * 父级分类ID (0 为顶级频道；若大于0必须为合法的一级分类)
      */
-    private Long parentId;
+    private Long channelId;
     /**
      * 分类名称 (如"东方玄幻")
      */

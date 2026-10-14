@@ -19,7 +19,7 @@ import java.util.List;
 
 @RequireRole
 @RestController
-@RequestMapping("/admin/book/category")
+@RequestMapping("/book/admin/category")
 @RequiredArgsConstructor
 public class AdminCategoryController {
 
@@ -36,6 +36,7 @@ public class AdminCategoryController {
         PageResult<AdminCategoryPageRespDTO> pageResult = categoryService.queryCategoryPage(categoryPageReqDTO);
         return Result.success(pageResult);
     }
+
 
     @GetMapping("/{id}")
     public Result<AdminCategoryDetailRespDTO> queryCategoryDetail(@PathVariable Long id) {

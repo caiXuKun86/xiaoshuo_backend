@@ -18,7 +18,7 @@ public final class JwtUtils {
     private static final SecretKey SECRET_KEY = Keys.hmacShaKeyFor(SECRET_KEY_STR.getBytes(StandardCharsets.UTF_8));
 
     // AccessToken 有效期 2 小时
-    public static final long ACCESS_TOKEN_EXPIRE = 2 * 60 * 60 * 1000L;
+    public static final long ACCESS_TOKEN_EXPIRE = 24 * 60 * 60 * 1000L;
     // RefreshToken 有效期 14 天
     public static final long REFRESH_TOKEN_EXPIRE = 14 * 24 * 60 * 60 * 1000L;
 

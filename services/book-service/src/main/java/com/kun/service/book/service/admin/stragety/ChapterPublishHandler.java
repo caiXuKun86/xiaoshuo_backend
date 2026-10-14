@@ -43,7 +43,7 @@ public class ChapterPublishHandler implements ChapterStatusHandler {
         boolean exists = bookChapterService.lambdaQuery()
                 .eq(BookChapter::getBookId, bookId)
                 .eq(BookChapter::getStatus, ChapterStatusEnum.AUDITING.getCode())
-                .le(BookChapter::getChapterIndex, bookChapter.getChapterIndex())
+                .lt(BookChapter::getChapterIndex, bookChapter.getChapterIndex())
                 .exists();
         if (exists) {
             throw new BusinessException(ResultCode.CHAPTER_PRE_AWAIT_AUDITING);
@@ -61,7 +61,7 @@ public class ChapterPublishHandler implements ChapterStatusHandler {
 
         Long count = bookInfoMapper.selectCount(new LambdaQueryWrapper<BookInfo>()
                 .eq(BookInfo::getId, bookId)
-                .ge(BookInfo::getLatestChapterId, bookChapter.getId()));
+                .le(BookInfo::getLatestChapterId, bookChapter.getId()));
         boolean isNewestChapter = count > 0;
         int update1 = bookInfoMapper.update(
                 new LambdaUpdateWrapper<BookInfo>()

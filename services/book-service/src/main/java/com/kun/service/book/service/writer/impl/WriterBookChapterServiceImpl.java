@@ -101,6 +101,14 @@ public class WriterBookChapterServiceImpl extends ServiceImpl<BookChapterMapper,
         }
         // 2. 作家作品属主校验 (防水平越权)
         validateBookOwnership(bookId);
+        //校验是否发布了上一章节
+        boolean exists = this.lambdaQuery()
+                .eq(BookChapter::getBookId, bookId)
+                .eq(chapterIndex > 1, BookChapter::getChapterIndex, chapterIndex - 1)
+                .exists();
+        if(!exists){
+            throw new BusinessException(ResultCode.CHAPTER_LAST_NOT_PUBLISH);
+        }
         // 3. 校验该序号在数据库中是否已有记录
         BookChapter oldChapter = this.lambdaQuery()
                 .eq(BookChapter::getBookId, bookId)
@@ -192,15 +200,17 @@ public class WriterBookChapterServiceImpl extends ServiceImpl<BookChapterMapper,
         }
         BookInfo bookInfo = validateBookOwnership(bookId);
 
-        if (bookInfo.getStatus().equals(BookStatusEnum.FINISHED.getCode())) {
+        if (bookInfo.getBookStatus().equals(BookStatusEnum.FINISHED.getCode())) {
             throw new BusinessException(ResultCode.BOOK_IS_OVER);
         }
-        Long count = this.lambdaQuery()
+
+        //校验是否发布了上一章节
+        boolean exists = this.lambdaQuery()
                 .eq(BookChapter::getBookId, bookId)
-                .eq(BookChapter::getChapterIndex, chapterIndex)
-                .count();
-        if (count > 0) {
-            throw new BusinessException(ResultCode.CHAPTER_ALREADY_PUBLISH);
+                .eq(chapterIndex > 1, BookChapter::getChapterIndex, chapterIndex - 1)
+                .exists();
+        if(!exists){
+            throw new BusinessException(ResultCode.CHAPTER_LAST_NOT_PUBLISH);
         }
 
         String ossPath;

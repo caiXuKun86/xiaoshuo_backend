@@ -2,10 +2,7 @@ package com.kun.service.user.controller;
 
 import com.kun.common.core.result.Result;
 import com.kun.common.oss.template.OssTemplate;
-import com.kun.service.user.dto.req.ChangePasswordReqDTO;
-import com.kun.service.user.dto.req.UserLoginReqDTO;
-import com.kun.service.user.dto.req.UserProfileUpdateReqDTO;
-import com.kun.service.user.dto.req.UserRegisterReqDTO;
+import com.kun.service.user.dto.req.*;
 import com.kun.service.user.dto.resp.RefreshTokenRespDTO;
 import com.kun.service.user.dto.resp.UserLoginRespDTO;
 import com.kun.service.user.dto.resp.UserProfileQueryRespDTO;
@@ -49,8 +46,8 @@ public class UserController {
     @Operation(summary = "双 Token 刷新令牌", description = "AccessToken 过期后，使用有效的 RefreshToken 无感置换新的凭据")
     @PostMapping("/refresh-token")
     public Result<RefreshTokenRespDTO> refreshToken(
-            @Parameter(description = "刷新凭证 RefreshToken") @RequestBody String refreshToken) {
-        RefreshTokenRespDTO refreshTokenRespDTO = userService.refreshToken(refreshToken);
+            @Parameter(description = "刷新凭证 RefreshToken") @RequestBody RefreshTokenReqDTO refreshTokenReqDTO) {
+        RefreshTokenRespDTO refreshTokenRespDTO = userService.refreshToken(refreshTokenReqDTO.getRefreshToken());
         return Result.success(refreshTokenRespDTO);
     }
 

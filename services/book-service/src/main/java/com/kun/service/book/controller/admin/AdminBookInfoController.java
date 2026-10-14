@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RequireRole
 @RestController
-@RequestMapping("/admin/book")
+@RequestMapping("/book/admin")
 @RequiredArgsConstructor
 public class AdminBookInfoController {
 

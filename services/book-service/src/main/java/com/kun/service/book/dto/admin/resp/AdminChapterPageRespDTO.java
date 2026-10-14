@@ -29,6 +29,10 @@ public class AdminChapterPageRespDTO implements Serializable {
      * 序号
      */
     private Integer chapterIndex;
+    /**
+     * 章节名称
+     */
+    private String chapterName;
 
 
     /**

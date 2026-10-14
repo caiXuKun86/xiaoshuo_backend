@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @EqualsAndHashCode(callSuper = true)
 public class AdminCategoryPageReqDTO extends com.kun.common.database.page.PageRequest {
 
+
     /**
      * 分类名称模糊匹配
      */

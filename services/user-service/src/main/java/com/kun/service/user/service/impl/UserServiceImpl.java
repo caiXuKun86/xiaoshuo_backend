@@ -134,7 +134,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         stringRedisTemplate.opsForValue().set(
                 accessTokenRedisKey,
                 accessToken,
-                2,
+                24,
                 TimeUnit.HOURS
         );
         stringRedisTemplate.opsForValue().set(

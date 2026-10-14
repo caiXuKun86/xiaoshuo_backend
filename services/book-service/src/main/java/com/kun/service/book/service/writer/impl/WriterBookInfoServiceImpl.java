@@ -71,7 +71,7 @@ public class WriterBookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookI
                 .eq(bookStatus != null, BookInfo::getBookStatus, bookStatus)
                 .eq(BookInfo::getAuthorId, authorId);
 
-        queryWrapper.and(wq -> wq.like(BookInfo::getBookName, keyword)
+        queryWrapper.and(StrUtil.isNotBlank(keyword),wq -> wq.like(BookInfo::getBookName, keyword)
                 .or().like(BookInfo::getTags, keyword));
 
 
@@ -168,9 +168,10 @@ public class WriterBookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookI
         List<String> tags = bookInfoUpdateReqDTO.getTags();
         validateBookOwnership(bookId);
         boolean update = this.lambdaUpdate()
-                .eq(StrUtil.isNotBlank(coverUrl), BookInfo::getCoverUrl, coverUrl)
-                .eq(StrUtil.isNotBlank(description), BookInfo::getDescription, description)
-                .eq(CollUtil.isNotEmpty(tags), BookInfo::getTags, JSONUtil.toJsonStr(tags))
+                .eq(BookInfo::getId,bookId)
+                .set(StrUtil.isNotBlank(coverUrl), BookInfo::getCoverUrl, coverUrl)
+                .set(StrUtil.isNotBlank(description), BookInfo::getDescription, description)
+                .set(CollUtil.isNotEmpty(tags), BookInfo::getTags, JSONUtil.toJsonStr(tags))
                 .update();
         if (!update) {
             throw new BusinessException(ResultCode.OPERATION_FAILED);
@@ -185,9 +186,9 @@ public class WriterBookInfoServiceImpl extends ServiceImpl<BookInfoMapper, BookI
         validateBookOwnership(bookId);
 
         boolean update = this.lambdaUpdate()
-                .set(BookInfo::getStatus, BookStatusEnum.FINISHED)
+                .set(BookInfo::getBookStatus, BookStatusEnum.FINISHED.getCode())
                 .eq(BookInfo::getId, bookId)
-                .eq(BookInfo::getStatus, BookStatusEnum.SERIALIZING)
+                .eq(BookInfo::getBookStatus, BookStatusEnum.SERIALIZING.getCode())
                 .update();
         if (!update) {
             throw new BusinessException(ResultCode.OPERATION_FAILED);

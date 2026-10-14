@@ -64,6 +64,7 @@ public class AuthorServiceImpl extends ServiceImpl<AuthorMapper, Author> impleme
         authorDetailQueryRespDTO.setBooks(bookInfoList.stream().map(bookInfo -> {
             AuthorDetailQueryRespDTO.BookInfoDTO bookInfoDTO = new AuthorDetailQueryRespDTO.BookInfoDTO();
             BeanUtil.copyProperties(bookInfo, bookInfoDTO);
+            bookInfoDTO.setBookId(bookInfo.getId());
             return bookInfoDTO;
         }).collect(Collectors.toList()));
         return authorDetailQueryRespDTO;

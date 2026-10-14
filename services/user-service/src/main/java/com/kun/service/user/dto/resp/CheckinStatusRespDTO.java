@@ -26,7 +26,7 @@ public class CheckinStatusRespDTO implements Serializable {
     /**
      * 本月签到信息
      */
-    private List<Integer> signedDaysThisMouth;
+    private List<Integer> signedDaysThisMonth;
 
 
 }

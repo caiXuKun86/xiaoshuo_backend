@@ -3,7 +3,7 @@ package com.kun.api.client.fallback;
 import com.kun.api.client.UserFeignClient;
 import com.kun.api.dto.user.RegisterWriterDTO;
 import com.kun.api.dto.user.UserDTO;
-import com.kun.api.dto.user.UserPointsUpdateDTO;
+import com.kun.api.dto.user.UserAssetsUpdateDTO;
 import com.kun.common.core.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.openfeign.FallbackFactory;
@@ -32,8 +32,10 @@ public class UserFeignClientFallbackFactory implements FallbackFactory<UserFeign
                 return Result.fail(503, "用户服务不可用(降级响应)");
             }
 
+
+
             @Override
-            public Result<Boolean> updatePoints(UserPointsUpdateDTO updateDTO) {
+            public Result<Boolean> updateUserAsset(UserAssetsUpdateDTO updateDTO) {
                 log.error("调用 service-user 失败，触发降级，原因: {}", cause.getMessage());
                 return Result.fail(503, "用户服务不可用(降级响应)");
             }

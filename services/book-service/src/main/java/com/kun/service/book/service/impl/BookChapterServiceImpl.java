@@ -68,13 +68,13 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
         if (bookInfo == null || !bookInfo.getStatus().equals(BookOpStatusEnum.ON_SHELF.getCode())) {
             throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
         }
-
         BookChapter bookChapter = this.getById(chapterId);
-        if (bookChapter == null) {
+        if (bookChapter == null || !bookChapter.getBookId().equals(bookId)) {
             throw new BusinessException(ResultCode.CHAPTER_NOT_FOUND);
         }
         ChapterDetailRespDTO chapterDetailRespDTO = new ChapterDetailRespDTO();
         BeanUtil.copyProperties(bookChapter, chapterDetailRespDTO);
+        chapterDetailRespDTO.setChapterId(bookChapter.getId());
         chapterDetailRespDTO.setRequiredPoints(null);
         BookChapter preChapter = this.lambdaQuery()
                 .eq(BookChapter::getBookId, bookChapter.getBookId())
@@ -138,8 +138,12 @@ public class BookChapterServiceImpl extends ServiceImpl<BookChapterMapper, BookC
             throw new BusinessException(ResultCode.BOOK_NOT_FOUND);
         }
         BookChapter bookChapter = this.getById(chapterId);
-        if (bookChapter == null) {
+        if (bookChapter == null || !bookChapter.getBookId().equals(bookId)) {
             throw new BusinessException(ResultCode.CHAPTER_NOT_FOUND);
+        }
+        if(bookChapter.getIsCharge().equals(ChapterChargeEnum.FREE.getCode())){
+            throw new BusinessException(ResultCode.CHAPTER_IS_FREE);
+
         }
         RLock lock = redissonClient.getLock(String.format(RedisKeyConstants.LOCK_EXCHANGE_CHAPTER, userId, chapterId));
         ChapterExchangeRespDTO chapterExchangeRespDTO = new ChapterExchangeRespDTO();
